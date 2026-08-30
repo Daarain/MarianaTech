@@ -3,10 +3,7 @@ import { FileText, File, Download, ChevronDown } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import { COLOURS } from '@/constants/colours';
 import { getAnomalies } from '@/api/anomalies';
-<<<<<<< HEAD
 import { generateReport } from '@/api/reports';
-=======
->>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
 import type { Anomaly } from '@/api/mockData';
 
 type Format = 'csv' | 'json' | 'pdf';
@@ -15,11 +12,7 @@ export default function Reports() {
   const [format, setFormat] = useState<Format>('csv');
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [loadingAnoms, setLoadingAnoms] = useState(true);
-<<<<<<< HEAD
   const [missionId] = useState(() => 'MSN-2026-0143');
-=======
-  const [missionId] = useState(() => 'MSN-2026-0142');
->>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
 
   // Filters
   const [includeFilter, setIncludeFilter] = useState<'confirmed' | 'all_reviewed' | 'all'>('confirmed');
@@ -32,25 +25,15 @@ export default function Reports() {
   const [generated, setGenerated] = useState<{ url: string; name: string; format: Format } | null>(null);
 
   const [pastExports] = useState(() => [
-<<<<<<< HEAD
     { name: 'MSN-2026-0143-summary-2026-08-22.csv', format: 'csv' as Format, date: '2026-08-22T15:12:00Z', size: '24 KB' },
     { name: 'MSN-2026-0143-detections-2026-08-20.json', format: 'json' as Format, date: '2026-08-20T09:42:00Z', size: '128 KB' },
     { name: 'MSN-2026-0143-report-2026-08-18.pdf', format: 'pdf' as Format, date: '2026-08-18T13:05:00Z', size: '512 KB' },
-=======
-    { name: 'MSN-2026-0142-summary-2026-08-22.csv', format: 'csv' as Format, date: '2026-08-22T15:12:00Z', size: '24 KB' },
-    { name: 'MSN-2026-0142-detections-2026-08-20.json', format: 'json' as Format, date: '2026-08-20T09:42:00Z', size: '128 KB' },
-    { name: 'MSN-2026-0142-report-2026-08-18.pdf', format: 'pdf' as Format, date: '2026-08-18T13:05:00Z', size: '512 KB' },
->>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
   ]);
 
   useEffect(() => {
     let mounted = true;
     setLoadingAnoms(true);
-<<<<<<< HEAD
     // using active mission from API/backend
-=======
-    // using first mission from mock - for demo purposes
->>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
     getAnomalies(missionId)
       .then((d) => {
         if (!mounted) return;
@@ -108,7 +91,6 @@ export default function Reports() {
   async function handleGenerate() {
     setGenerating(true);
     setGenerated(null);
-<<<<<<< HEAD
     try {
       const res = await generateReport(missionId);
       if (res && res.url && res.url !== '#') {
@@ -131,25 +113,6 @@ export default function Reports() {
     } finally {
       setGenerating(false);
     }
-=======
-    setTimeout(() => {
-      // fake content
-      let content = '';
-      const nameBase = `report-${missionId}-${new Date().toISOString().slice(0,10)}`;
-      const fname = `${nameBase}.${format}`;
-      if (format === 'csv') {
-        content = ['id,class,confidence,lat,lon,status', ...filtered.map((a) => `${a.id},${a.class_name},${Math.round(a.confidence*100)},${a.latitude},${a.longitude},${a.status}`)].join('\n');
-      } else if (format === 'json') {
-        content = JSON.stringify(filtered, null, 2);
-      } else {
-        content = `Report for ${missionId}\nGenerated: ${new Date().toISOString()}\nItems: ${filtered.length}`;
-      }
-      const blob = new Blob([content], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      setGenerated({ url, name: fname, format });
-      setGenerating(false);
-    }, 2000);
->>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
   }
 
   function handleDownloadGenerated() {

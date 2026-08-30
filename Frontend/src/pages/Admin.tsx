@@ -69,14 +69,9 @@ export default function Admin() {
   useEffect(() => { if (import.meta.env && !devRole) setDevRole(null); }, []);
 
   function switchTo(roleTarget: 'admin' | 'operator') {
-<<<<<<< HEAD
     // try login with seeded credentials (best-effort) then set local override
     const pass = roleTarget === 'admin' ? 'admin123' : 'operator123';
     login(roleTarget, pass).catch(() => {});
-=======
-    // try login as mock (best-effort) then set local override
-    login(roleTarget, 'pass').catch(() => {});
->>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
     setDevRole(roleTarget);
   }
 

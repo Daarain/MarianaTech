@@ -64,6 +64,7 @@ export default function SonarViewer() {
     if (!vp) return;
 
     function onDown(e: PointerEvent) {
+      if (!vp) return;
       dragging.current = true;
       vp.setPointerCapture(e.pointerId);
       lastPos.current = { x: e.clientX, y: e.clientY };

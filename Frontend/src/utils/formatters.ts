@@ -18,7 +18,8 @@ export function formatDateTime(iso: string): string {
   });
 }
 
-export function formatCoordinate(lat: number, lon: number): string {
+export function formatCoordinate(lat: number | null, lon: number | null): string {
+  if (lat === null || lon === null) return 'Coordinates unavailable';
   const latDir = lat >= 0 ? 'N' : 'S';
   const lonDir = lon >= 0 ? 'E' : 'W';
   return `${Math.abs(lat).toFixed(4)}° ${latDir}, ${Math.abs(lon).toFixed(4)}° ${lonDir}`;

@@ -201,7 +201,7 @@ export default function AnomalyPanel() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-md text-2xl" style={{ background: 'rgba(255,255,255,0.02)' }}>{CLASS_EMOJI[a.class_name] ?? '❓'}</div>
                   <div>
                     <div className="text-sm font-bold" style={{ color: COLOURS.textPrimary }}>{a.class_name.replace(/_/g, ' ')}</div>
-                    <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>{a.latitude.toFixed(4)}, {a.longitude.toFixed(4)}</div>
+                    <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>{a.latitude !== null && a.longitude !== null ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}` : 'Coordinates unavailable'}</div>
                     <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>Ping ref: {a.id.split('-').slice(-1)[0]}</div>
                   </div>
                 </div>

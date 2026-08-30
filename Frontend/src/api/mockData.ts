@@ -15,8 +15,8 @@ export interface Mission {
   name: string;
   date: string;
   location: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   status: MissionStatus;
   anomaly_count: number;
   priority: Priority;
@@ -31,8 +31,8 @@ export interface Anomaly {
   mission_id: string;
   class_name: AnomalyClass;
   confidence: number;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   priority: Priority;
   status: AnomalyStatus;
   depth_m: number;
