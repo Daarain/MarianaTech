@@ -1,0 +1,39 @@
+{
+  "reportTitle": "MarianaTech Side-scan Sonar Mission Intelligence Report",
+  "generatedAt": "2026-08-29T11:13:23.892Z",
+  "mission": {
+    "id": "MSN-2026-RPT1",
+    "name": "Pacific Trench Report Mission",
+    "status": "complete",
+    "date": "2026-08-29",
+    "location": "Pacific Ocean",
+    "vessel": "",
+    "operator": "Cdr. A. Fernando",
+    "sonarType": "Side-scan Sonar",
+    "depthM": 3800,
+    "areaKm2": 30,
+    "anomalyCount": 1
+  },
+  "processingRun": {
+    "runId": "N/A",
+    "jobId": "N/A",
+    "modelVersion": "v1.0.0",
+    "preprocessingVersion": "v1.0",
+    "status": "completed",
+    "completedAt": "2026-08-29T11:13:23.892Z"
+  },
+  "anomalies": [
+    {
+      "id": "ANM-RPT-001",
+      "className": "shipwreck",
+      "confidence": 0.95,
+      "priority": "critical",
+      "latitude": -6.214,
+      "longitude": 71.854,
+      "depthM": 3780,
+      "sizeM": 50,
+      "status": "verified",
+      "description": "Historical vessel hull"
+    }
+  ]
+}

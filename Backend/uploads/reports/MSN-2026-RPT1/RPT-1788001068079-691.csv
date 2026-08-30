@@ -1,0 +1,10 @@
+# MarianaTech Side-scan Sonar Mission Intelligence Report
+# Generated At: 2026-08-29T10:57:48.079Z
+
+# MISSION SUMMARY
+Mission ID,Mission Name,Status,Date,Location,Vessel,Operator,Sonar Type,Processing Run ID,Model Version,Anomaly Count
+"MSN-2026-RPT1","Pacific Trench Report Mission","complete","2026-08-29","Pacific Ocean","","Cdr. A. Fernando","Side-scan Sonar","N/A","v1.0.0",1
+
+# DETECTED ACOUSTIC ANOMALIES
+Anomaly ID,Class Name,Confidence,Priority,Latitude,Longitude,Depth (m),Size (m),Verification Status,Description
+"ANM-RPT-001","shipwreck","0.95","critical","-6.214","71.854","3780","50","verified","Historical vessel hull"

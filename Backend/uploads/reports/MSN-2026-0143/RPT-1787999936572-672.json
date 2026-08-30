@@ -1,0 +1,63 @@
+{
+  "reportTitle": "MarianaTech Side-scan Sonar Mission Intelligence Report",
+  "generatedAt": "2026-08-29T10:38:56.572Z",
+  "mission": {
+    "id": "MSN-2026-0143",
+    "name": "Sonar Trench Survey",
+    "status": "pending",
+    "date": "2026-08-29",
+    "location": "Mariana Trench",
+    "vessel": "",
+    "operator": "Cdr. A. Fernando",
+    "sonarType": "Side-scan Sonar",
+    "depthM": 5500,
+    "areaKm2": 15,
+    "anomalyCount": 3
+  },
+  "processingRun": {
+    "runId": "N/A",
+    "jobId": "N/A",
+    "modelVersion": "v1.0.0",
+    "preprocessingVersion": "v1.0",
+    "status": "completed",
+    "completedAt": "2026-08-29T10:38:56.572Z"
+  },
+  "anomalies": [
+    {
+      "id": "ANM-2026-0003",
+      "className": "mine_like_contact",
+      "confidence": 0.91,
+      "priority": "critical",
+      "latitude": -6.228,
+      "longitude": 71.868,
+      "depthM": 4195,
+      "sizeM": 3.2,
+      "status": "pending_review",
+      "description": "Cylindrical metallic acoustic reflection matching naval ordnance profile. [DEMO DATA]"
+    },
+    {
+      "id": "ANM-2026-0002",
+      "className": "pipeline_damage",
+      "confidence": 0.88,
+      "priority": "high",
+      "latitude": -6.22,
+      "longitude": 71.86,
+      "depthM": 4210,
+      "sizeM": 12,
+      "status": "pending_review",
+      "description": "Subsea communication conduit structural rupture anomaly. [DEMO DATA]"
+    },
+    {
+      "id": "ANM-2026-0001",
+      "className": "shipwreck",
+      "confidence": 0.94,
+      "priority": "critical",
+      "latitude": -6.214,
+      "longitude": 71.854,
+      "depthM": 4180,
+      "sizeM": 42.5,
+      "status": "pending_review",
+      "description": "Sunken vessel acoustic profile detected with clear hull and mast structural features. [DEMO DATA]"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# MarianaTech Side-scan Sonar Mission Intelligence Report
+# Generated At: 2026-08-29T10:38:56.515Z
+
+# MISSION SUMMARY
+Mission ID,Mission Name,Status,Date,Location,Vessel,Operator,Sonar Type,Processing Run ID,Model Version,Anomaly Count
+"MSN-2026-0143","Sonar Trench Survey","pending","2026-08-29","Mariana Trench","","Cdr. A. Fernando","Side-scan Sonar","N/A","v1.0.0",3
+
+# DETECTED ACOUSTIC ANOMALIES
+Anomaly ID,Class Name,Confidence,Priority,Latitude,Longitude,Depth (m),Size (m),Verification Status,Description
+"ANM-2026-0003","mine_like_contact","0.91","critical","-6.228","71.868","4195","3.2","pending_review","Cylindrical metallic acoustic reflection matching naval ordnance profile. [DEMO DATA]"
+"ANM-2026-0002","pipeline_damage","0.88","high","-6.22","71.86","4210","12","pending_review","Subsea communication conduit structural rupture anomaly. [DEMO DATA]"
+"ANM-2026-0001","shipwreck","0.94","critical","-6.214","71.854","4180","42.5","pending_review","Sunken vessel acoustic profile detected with clear hull and mast structural features. [DEMO DATA]"

@@ -1,0 +1,51 @@
+{
+  "reportTitle": "MarianaTech Side-scan Sonar Mission Intelligence Report",
+  "generatedAt": "2026-08-29T10:34:23.973Z",
+  "mission": {
+    "id": "MSN-2026-RPT-1787999663818",
+    "name": "Report Test Mission",
+    "status": "complete",
+    "date": "2026-08-29",
+    "location": "Chagos Trench",
+    "vessel": "RV Horizon",
+    "operator": "Lt. R. Mehta",
+    "sonarType": "Side-scan 900 kHz",
+    "depthM": 4200,
+    "areaKm2": 25,
+    "anomalyCount": 2
+  },
+  "processingRun": {
+    "runId": "N/A",
+    "jobId": "N/A",
+    "modelVersion": "v1.0.0",
+    "preprocessingVersion": "v1.0",
+    "status": "completed",
+    "completedAt": "2026-08-29T10:34:23.973Z"
+  },
+  "anomalies": [
+    {
+      "id": "ANM-RPT-002",
+      "className": "mine_like_contact",
+      "confidence": 0.91,
+      "priority": "critical",
+      "latitude": -6.228,
+      "longitude": 71.868,
+      "depthM": 4195,
+      "sizeM": 3.2,
+      "status": "verified",
+      "description": "Naval ordnance profile"
+    },
+    {
+      "id": "ANM-RPT-001",
+      "className": "shipwreck",
+      "confidence": 0.94,
+      "priority": "critical",
+      "latitude": -6.214,
+      "longitude": 71.854,
+      "depthM": 4180,
+      "sizeM": 42.5,
+      "status": "pending_review",
+      "description": "Sunken vessel target profile"
+    }
+  ]
+}

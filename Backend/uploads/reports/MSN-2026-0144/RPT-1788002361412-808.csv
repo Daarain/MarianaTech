@@ -1,0 +1,13 @@
+# MarianaTech Side-scan Sonar Mission Intelligence Report
+# Generated At: 2026-08-29T11:19:21.412Z
+
+# MISSION SUMMARY
+Mission ID,Mission Name,Status,Date,Location,Vessel,Operator,Sonar Type,Processing Run ID,Model Version,Anomaly Count
+"MSN-2026-0144","E2E Deepsea Trench Survey","complete","2026-08-29","Mariana Trench South","RV Mariana Explorer","E2E Operator","Side-scan Sonar","RUN-E2E-1788002361327","v1.4.2-yolo-sonar",4
+
+# DETECTED ACOUSTIC ANOMALIES
+Anomaly ID,Class Name,Confidence,Priority,Latitude,Longitude,Depth (m),Size (m),Verification Status,Description
+"ANM-E2E-1788002361332","shipwreck","0.96","critical","-6.214","71.854","4180","45","rejected","Sunken vessel acoustic profile verified in E2E suite"
+"ANM-AI-1788002361260-3","geological_formation","0.76","medium","-6.23","71.87","4150","12.5","pending_review","Acoustic target detected matching geological formation profile. Symmetry: geological_randomness. Bounding box: [800, 1120, 200, 180]."
+"ANM-AI-1788002361253-2","shipwreck","0.89","high","-6.222","71.862","4205","38","pending_review","Acoustic target detected matching shipwreck profile. Symmetry: high_linear_symmetry. Bounding box: [510, 890, 350, 120]."
+"ANM-AI-1788002361241-1","mine_like_contact","0.93","critical","-6.215","71.855","4185","2.9","pending_review","Acoustic target detected matching mine like contact profile. Symmetry: high_linear_symmetry. Bounding box: [120, 340, 45, 45]."
