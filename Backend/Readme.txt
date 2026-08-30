@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ==================================================
 MARIANATECH BACKEND IMPLEMENTATION LOG & ARCHITECTURE
 ==================================================
@@ -230,3 +231,6 @@ STEP 16: FINAL FRONTEND ↔ BACKEND INTEGRATION (COMPLETED)
    - Zero UI modifications or redesigns.
    - Clean production build verified via Vite (`npm run build` passed cleanly).
    - Full backend test suite verified via Jest (`13 test suites, 77 tests passed 100%`).
+=======
+use this file for keeping updates on files 
+>>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0

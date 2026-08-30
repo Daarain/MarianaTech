@@ -1,12 +1,16 @@
+<<<<<<< HEAD
 import { BASE_URL } from '@/constants/config';
 import { apiClient } from './client';
 
+=======
+>>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
 export type AuthUser = {
   user: string;
   role: 'admin' | 'operator';
   token: string;
 };
 
+<<<<<<< HEAD
 const AUTH_STORAGE_KEY = 'marianatech_auth';
 
 export function getStoredAuth(): AuthUser | null {
@@ -51,4 +55,16 @@ export async function getMe(): Promise<{ id: string; username: string; name: str
   } catch {
     return null;
   }
+=======
+export async function login(username: string, _password: string): Promise<AuthUser> {
+  await new Promise((r) => setTimeout(r, 300)); // mock delay
+  if (username === 'admin') {
+    return { user: 'Cdr. A. Fernando', role: 'admin', token: 'mock-admin-token' };
+  }
+  return { user: 'Lt. R. Mehta', role: 'operator', token: 'mock-token' };
+}
+
+export async function logout(): Promise<void> {
+  await new Promise((r) => setTimeout(r, 200));
+>>>>>>> 7c3109914c58eb0fd2cd188542afc46b97452ec0
 }
