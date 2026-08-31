@@ -3,7 +3,7 @@ import { FileText, File, Download, ChevronDown } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import { COLOURS } from '@/constants/colours';
 import { getAnomalies } from '@/api/anomalies';
-import { generateReport } from '@/api/reports';
+import { generateReport, type SupportedReportFormat } from '@/api/reports';
 import type { Anomaly } from '@/api/mockData';
 
 type Format = 'csv' | 'json' | 'pdf';
@@ -23,6 +23,7 @@ export default function Reports() {
 
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<{ url: string; name: string; format: Format } | null>(null);
+  const [formatError, setFormatError] = useState<string | null>(null);
 
   const [pastExports] = useState(() => [
     { name: 'MSN-2026-0143-summary-2026-08-22.csv', format: 'csv' as Format, date: '2026-08-22T15:12:00Z', size: '24 KB' },
@@ -89,10 +90,17 @@ export default function Reports() {
   }
 
   async function handleGenerate() {
+    if (format === 'pdf') {
+      setGenerated(null);
+      setFormatError('PDF export is not available. Select CSV or JSON.');
+      return;
+    }
+
     setGenerating(true);
     setGenerated(null);
+    setFormatError(null);
     try {
-      const res = await generateReport(missionId);
+      const res = await generateReport(missionId, format as SupportedReportFormat);
       if (res && res.url && res.url !== '#') {
         const nameBase = `report-${missionId}-${new Date().toISOString().slice(0, 10)}`;
         const fname = `${nameBase}.${format}`;
@@ -187,6 +195,9 @@ export default function Reports() {
               </div>
 
               <div>
+                {formatError && (
+                  <p className="mb-2 text-sm" style={{ color: COLOURS.hazard.base }}>{formatError}</p>
+                )}
                 {!generated ? (
                   <button onClick={handleGenerate} disabled={generating} className="w-full px-4 py-3 rounded font-semibold" style={{ background: COLOURS.ocean.light, color: COLOURS.white }}>
                     {generating ? <span className="generate-wave" style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 6 }}>Generating...</span> : 'Generate Report'}

@@ -28,7 +28,7 @@ function useCountUp(target: number, duration = 800) {
 }
 
 export default function Admin() {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const role = user?.role ?? 'operator';
   const isAdmin = role === 'admin';
@@ -64,18 +64,7 @@ export default function Admin() {
     setUsers((u) => u.map((x) => (x.id === id ? { ...x, enabled: !x.enabled } : x)));
   }
 
-  // dev role switch (debug badge) - attempts to call login with mock user, but also overrides locally for display
-  const [devRole, setDevRole] = useState<string | null>(null);
-  useEffect(() => { if (import.meta.env && !devRole) setDevRole(null); }, []);
-
-  function switchTo(roleTarget: 'admin' | 'operator') {
-    // try login with seeded credentials (best-effort) then set local override
-    const pass = roleTarget === 'admin' ? 'admin123' : 'operator123';
-    login(roleTarget, pass).catch(() => {});
-    setDevRole(roleTarget);
-  }
-
-  const effectiveRole = devRole ?? role;
+  const effectiveRole = role;
 
   return (
     <PageLayout title="Admin">
@@ -215,17 +204,6 @@ export default function Admin() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Dev debug badge */}
-        {import.meta.env.DEV && (
-          <div style={{ position:'fixed', right:20, bottom:20, background:'rgba(0,0,0,0.6)', padding:8, borderRadius:8, color:'#fff', zIndex:999 }}>
-            <div style={{ fontSize:12, marginBottom:6 }}>Role: {effectiveRole}</div>
-            <div style={{ display:'flex', gap:6 }}>
-              <button onClick={() => switchTo('admin')} style={{ padding:'6px 8px', borderRadius:6, background: COLOURS.ocean.light, color:'#fff' }}>Switch to Admin</button>
-              <button onClick={() => switchTo('operator')} style={{ padding:'6px 8px', borderRadius:6, background: COLOURS.seafloor.light, color:'#000' }}>Switch to Operator</button>
             </div>
           </div>
         )}

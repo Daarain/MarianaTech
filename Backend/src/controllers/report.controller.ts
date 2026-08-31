@@ -13,7 +13,7 @@ export async function createMissionReportHandler(
   try {
     const { missionId } = req.params;
     const format = req.body?.format || req.query?.format || 'csv';
-    const username = (req as any).user?.name || (req as any).user?.username || 'Cdr. A. Fernando';
+    const username = (req as any).user?.name || (req as any).user?.username;
 
     const result = await createMissionReport(missionId, format, username);
 

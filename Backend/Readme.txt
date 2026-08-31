@@ -32,10 +32,10 @@ STEP 3: AUTHENTICATION MODULE (COMPLETED)
 1. WHAT WAS IMPLEMENTED:
    - User Mongoose model (`src/models/user.model.ts`) with strictly scoped roles: `"admin" | "operator"`.
    - Automatic password hashing via `bcryptjs` and token signing via `jsonwebtoken`.
-   - Configured environment settings `JWT_SECRET`, `JWT_EXPIRES_IN`, `ADMIN_INITIAL_PASSWORD`, and `OPERATOR_INITIAL_PASSWORD`.
+   - Configured environment settings `JWT_SECRET` and `JWT_EXPIRES_IN`.
    - Authentication middleware (`src/middleware/auth.middleware.ts`) supporting `Authorization: Bearer <token>` and token queries.
    - Role-based authorization middleware (`authorizeRoles(['admin'])`).
-   - Development seed mechanism (`src/utils/seed.ts`) configuring default admin (`Cdr. A. Fernando`) and operator (`Lt. R. Mehta`) accounts without hardcoded passwords.
+   - Authentication uses only existing MongoDB user records and bcrypt password-hash comparison.
    - Frontend-compatible login endpoint `POST /auth/login` returning `{ user, role, token }`.
    - `POST /auth/logout` and protected `GET /auth/me` endpoints.
    - Automated Jest unit & integration test suite (`tests/auth.test.ts`).

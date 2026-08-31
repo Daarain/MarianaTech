@@ -3,6 +3,12 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
+
 export const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5000', 10),
@@ -10,10 +16,8 @@ export const config = {
   mongodbDbName: process.env.MONGODB_DB_NAME || 'marianatech',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   serviceName: process.env.SERVICE_NAME || 'marianatech-backend',
-  jwtSecret: process.env.JWT_SECRET || 'marianatech_super_secret_jwt_key_2026',
+  jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
-  adminInitialPassword: process.env.ADMIN_INITIAL_PASSWORD || 'admin123',
-  operatorInitialPassword: process.env.OPERATOR_INITIAL_PASSWORD || 'operator123',
   redisHost: process.env.REDIS_HOST || '127.0.0.1',
   redisPort: parseInt(process.env.REDIS_PORT || '6379', 10),
   redisPassword: process.env.REDIS_PASSWORD || '',

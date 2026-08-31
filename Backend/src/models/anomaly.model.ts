@@ -52,13 +52,13 @@ const AnomalySchema = new Schema<IAnomalyDoc>(
     customId: {
       type: String,
       default: function (this: any) {
-        return this.id;
+        return this ? this.id : undefined;
       },
     },
     missionId: {
       type: String,
       default: function (this: any) {
-        return (this as any).mission_id || this.missionId;
+        return this ? (this as any).mission_id || this.missionId : undefined;
       },
       index: true,
     },
@@ -77,7 +77,7 @@ const AnomalySchema = new Schema<IAnomalyDoc>(
         'mine_like_contact',
       ],
       default: function (this: any) {
-        return (this as any).class_name || 'unidentified_object';
+        return this ? (this as any).class_name || 'unidentified_object' : undefined;
       },
       required: true,
     },
@@ -108,7 +108,7 @@ const AnomalySchema = new Schema<IAnomalyDoc>(
     depthM: {
       type: Number,
       default: function (this: any) {
-        return (this as any).depth_m ?? 0;
+        return this ? (this as any).depth_m ?? 0 : undefined;
       },
       required: true,
     },

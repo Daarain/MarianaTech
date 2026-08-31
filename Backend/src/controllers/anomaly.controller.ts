@@ -50,7 +50,7 @@ export async function verifyAnomalyHandler(
   try {
     const { anomalyId } = req.params;
     const { comment, status } = req.body || {};
-    const username = (req as any).user?.name || (req as any).user?.username || 'Cdr. A. Fernando';
+    const username = (req as any).user?.name || (req as any).user?.username;
 
     const updated = await updateVerifyAnomaly(anomalyId, username, comment || '', status || 'verified');
     if (!updated) {
@@ -72,7 +72,7 @@ export async function rejectAnomalyHandler(
   try {
     const { anomalyId } = req.params;
     const { comment } = req.body || {};
-    const username = (req as any).user?.name || (req as any).user?.username || 'Cdr. A. Fernando';
+    const username = (req as any).user?.name || (req as any).user?.username;
 
     const updated = await updateRejectAnomaly(anomalyId, username, comment || '');
     if (!updated) {

@@ -2,8 +2,6 @@ import http from 'http';
 import app from './app';
 import { config } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/database';
-import { seedInitialUsers } from './utils/seed';
-import { seedDemoAnomalies } from './utils/seedAnomalies';
 import { initializeSonarWorker } from './workers/sonarWorker';
 
 const server = http.createServer(app);
@@ -11,10 +9,6 @@ const server = http.createServer(app);
 async function startServer(): Promise<void> {
   // Connect to MongoDB
   await connectDatabase();
-
-  // Seed default development users and demo anomalies
-  await seedInitialUsers();
-  await seedDemoAnomalies();
 
   // Initialize BullMQ background worker
   initializeSonarWorker();
