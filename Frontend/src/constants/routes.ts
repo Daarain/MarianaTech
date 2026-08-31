@@ -1,4 +1,7 @@
 export const ROUTES = {
+  home: '/',
+  login: '/login',
+  signup: '/signup',
   dashboard: '/dashboard',
   missionNew: '/missions/new',
   missionStatus: '/missions/:id/status',
@@ -10,6 +13,9 @@ export const ROUTES = {
 } as const;
 
 export const ROUTE_LABELS: Record<string, string> = {
+  '/': 'Home',
+  '/login': 'Login',
+  '/signup': 'Sign Up',
   '/dashboard': 'Dashboard',
   '/missions/new': 'New Mission',
   '/missions/:id/status': 'Monitoring',

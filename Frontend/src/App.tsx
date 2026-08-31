@@ -1,5 +1,5 @@
 import LandingPage from './pages/LandingPage';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { MissionProvider } from '@/context/MissionContext';
 import { ROUTES } from '@/constants/routes';
@@ -11,6 +11,8 @@ import MapView from '@/pages/MapView';
 import AnomalyPanel from '@/pages/AnomalyPanel';
 import Reports from '@/pages/Reports';
 import Admin from '@/pages/Admin';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 
 function App() {
   return (
@@ -18,7 +20,9 @@ function App() {
       <MissionProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path={ROUTES.home} element={<LandingPage />} />
+            <Route path={ROUTES.login} element={<LoginPage />} />
+            <Route path={ROUTES.signup} element={<SignupPage />} />
             <Route path={ROUTES.dashboard} element={<Dashboard />} />
             <Route path={ROUTES.missionNew} element={<MissionUpload />} />
             <Route path={ROUTES.missionStatus} element={<MissionMonitoring />} />

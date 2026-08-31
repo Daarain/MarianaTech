@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { loginUser, getUserProfile } from '../services/auth.service';
+import { loginUser, getUserProfile, registerUser } from '../services/auth.service';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -11,6 +11,22 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     res.status(401).json({
       error: error.message || 'Authentication failed',
       statusCode: 401,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
+export async function register(req: Request, res: Response): Promise<void> {
+  try {
+    const { name, username, password, role } = req.body ?? {};
+    const result = await registerUser(name, username, password, role);
+    res.status(201).json(result);
+  } catch (error: any) {
+    const message = error.message || 'Registration failed';
+    const statusCode = message.toLowerCase().includes('exists') || message.toLowerCase().includes('already') ? 409 : 400;
+    res.status(statusCode).json({
+      error: message,
+      statusCode,
       timestamp: new Date().toISOString(),
     });
   }

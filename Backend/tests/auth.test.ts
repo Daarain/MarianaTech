@@ -9,6 +9,9 @@ const testPassword = 'test-password-only';
 const testName = 'Authentication Test User';
 
 describe('Authentication API Endpoint Tests', () => {
+  let authenticatedUserToken = '';
+  let registeredUsername = '';
+
   beforeAll(async () => {
     await connectDatabase();
     await User.create({
@@ -21,7 +24,7 @@ describe('Authentication API Endpoint Tests', () => {
   });
 
   afterAll(async () => {
-    await User.deleteOne({ username: testUsername });
+    await User.deleteMany({ username: { $in: [testUsername, registeredUsername].filter(Boolean) } });
     await disconnectDatabase();
   });
 
@@ -36,6 +39,8 @@ describe('Authentication API Endpoint Tests', () => {
     expect(res.body).toHaveProperty('token');
     expect(typeof res.body.token).toBe('string');
     expect(res.body).not.toHaveProperty('passwordHash');
+
+    authenticatedUserToken = res.body.token;
   });
 
   it('POST /auth/login should accept a case-insensitive username lookup', async () => {
@@ -49,6 +54,31 @@ describe('Authentication API Endpoint Tests', () => {
     expect(res.body).toHaveProperty('token');
   });
 
+  it('POST /auth/register should create a user with a hashed password and allow login', async () => {
+    registeredUsername = `newoperator_${Date.now()}`;
+    const res = await request(app)
+      .post('/auth/register')
+      .send({ name: 'New Operator', username: registeredUsername, password: 'newpass123' });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty('message', 'User registered successfully');
+    expect(res.body).toHaveProperty('user');
+    expect(res.body.user).toHaveProperty('username', registeredUsername);
+    expect(res.body.user).toHaveProperty('role', 'operator');
+
+    const registeredUser = await User.findOne({ username: registeredUsername });
+    expect(registeredUser).not.toBeNull();
+    expect(await bcrypt.compare('newpass123', registeredUser!.passwordHash)).toBe(true);
+
+    const loginRes = await request(app)
+      .post('/auth/login')
+      .send({ username: registeredUsername, password: 'newpass123' });
+
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body).toHaveProperty('role', 'operator');
+    expect(loginRes.body).toHaveProperty('token');
+  });
+
   it('POST /auth/login should fail for invalid password', async () => {
     const res = await request(app)
       .post('/auth/login')
@@ -59,15 +89,9 @@ describe('Authentication API Endpoint Tests', () => {
   });
 
   it('GET /auth/me should return authenticated user profile with Bearer token', async () => {
-    const loginRes = await request(app)
-      .post('/auth/login')
-      .send({ username: testUsername, password: testPassword });
-
-    const token = loginRes.body.token;
-
     const meRes = await request(app)
       .get('/auth/me')
-      .set('Authorization', `Bearer ${token}`);
+      .set('Authorization', `Bearer ${authenticatedUserToken}`);
 
     expect(meRes.status).toBe(200);
     expect(meRes.body).toHaveProperty('username', testUsername);
