@@ -32,6 +32,15 @@ export async function login(username: string, password: string): Promise<AuthUse
   return data;
 }
 
+export async function register(
+  name: string,
+  username: string,
+  password: string,
+  role: 'admin' | 'operator' = 'operator'
+): Promise<{ message: string; user: { name: string; username: string; role: 'admin' | 'operator' } }> {
+  return apiClient.post('/auth/register', { name, username, password, role });
+}
+
 export async function logout(): Promise<void> {
   const auth = getStoredAuth();
   if (auth?.token) {

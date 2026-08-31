@@ -511,7 +511,7 @@ export default function LandingPage() {
                 {link}
               </a>
             ))}
-            <button onClick={() => navigate('/dashboard')} style={{
+            <button onClick={() => navigate('/login')} style={{
               padding: '8px 20px', borderRadius: 20,
               border: '1px solid rgba(55,138,221,0.5)',
               background: 'rgba(12,68,124,0.4)',
@@ -568,7 +568,7 @@ export default function LandingPage() {
           </p>
 
           <div style={{ animation: 'heroFadeUp 0.8s ease-out 0.7s both, floatY 4s ease-in-out 1.5s infinite' }}>
-            <TreasureChest onOpen={() => navigate('/dashboard')} />
+            <TreasureChest onOpen={() => navigate('/login')} />
           </div>
         </div>
 
@@ -765,7 +765,7 @@ export default function LandingPage() {
           <p style={{ fontSize: 15, color: 'rgba(160,200,255,0.7)', marginBottom: 40, lineHeight: 1.7 }}>
             Upload your side-scan sonar files and let our AI find what's hiding on the ocean floor
           </p>
-          <button className="cta-btn" onClick={() => navigate('/dashboard')} style={{
+          <button className="cta-btn" onClick={() => navigate('/login')} style={{
             padding: '16px 40px', borderRadius: 50,
             background: `linear-gradient(135deg, ${C.oceanBlue}, ${C.bioPurple})`,
             border: 'none', color: '#fff', fontSize: 16, fontWeight: 600,

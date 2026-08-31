@@ -9,9 +9,18 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  user: {
+    name: string;
+    username: string;
+    role: UserRole;
+  };
+}
+
 export async function loginUser(usernameInput: string, passwordInput: string): Promise<LoginResponse> {
   const username = usernameInput ? usernameInput.trim().toLowerCase() : '';
-  
+
   if (!username || !passwordInput) {
     throw new Error('Username and password are required');
   }
@@ -39,11 +48,57 @@ export async function loginUser(usernameInput: string, passwordInput: string): P
 
   const token = jwt.sign(payload, config.jwtSecret, options);
 
-  // Exact frontend compatibility response
   return {
     user: user.name,
     role: user.role,
     token,
+  };
+}
+
+export async function registerUser(
+  nameInput: string,
+  usernameInput: string,
+  passwordInput: string,
+  roleInput?: UserRole
+): Promise<RegisterResponse> {
+  const name = nameInput ? nameInput.trim() : '';
+  const username = usernameInput ? usernameInput.trim().toLowerCase() : '';
+  const password = passwordInput ?? '';
+  const requestedRole = roleInput === 'admin' ? 'admin' : 'operator';
+
+  if (!name || !username || !password) {
+    throw new Error('Name, username, and password are required');
+  }
+
+  if (username.length < 3) {
+    throw new Error('Username must be at least 3 characters');
+  }
+
+  if (password.length < 6) {
+    throw new Error('Password must be at least 6 characters');
+  }
+
+  const existingUser = await User.findOne({ username });
+  if (existingUser) {
+    throw new Error('Username already exists');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await User.create({
+    name,
+    username,
+    passwordHash,
+    role: requestedRole,
+    isActive: true,
+  });
+
+  return {
+    message: 'User registered successfully',
+    user: {
+      name: user.name,
+      username: user.username,
+      role: user.role,
+    },
   };
 }
 
