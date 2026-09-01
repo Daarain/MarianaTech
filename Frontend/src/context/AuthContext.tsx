@@ -3,7 +3,7 @@ import { type AuthUser, getStoredAuth } from '@/api/auth';
 
 interface AuthContextValue {
   user: AuthUser | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
 }
 
@@ -14,10 +14,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextValue = {
     user,
-    login: async (username: string, password: string) => {
+    login: async (identifier: string, password: string) => {
       const { login } = await import('@/api/auth');
-      const u = await login(username, password);
+      const u = await login(identifier, password);
       setUser(u);
+      return u;
     },
     logout: async () => {
       const { logout } = await import('@/api/auth');

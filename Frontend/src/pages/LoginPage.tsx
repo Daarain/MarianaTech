@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react';
+﻿import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,20 +20,20 @@ const colors = {
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [form, setForm] = useState({ username: '', password: '' });
-  const [errors, setErrors] = useState<{ username?: string; password?: string; form?: string }>({});
+  const [form, setForm] = useState({ identifier: '', password: '' });
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string; form?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: 'username' | 'password', value: string) => {
+  const handleChange = (field: 'identifier' | 'password', value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
   };
 
   const validate = () => {
-    const nextErrors: { username?: string; password?: string } = {};
+    const nextErrors: { identifier?: string; password?: string } = {};
 
-    if (!form.username.trim()) {
-      nextErrors.username = 'Username is required.';
+    if (!form.identifier.trim()) {
+      nextErrors.identifier = 'Username or email is required.';
     }
 
     if (!form.password) {
@@ -56,11 +56,11 @@ export default function LoginPage() {
     setErrors({});
 
     try {
-      await login(form.username.trim(), form.password);
-      navigate(ROUTES.dashboard);
+      const authUser = await login(form.identifier.trim(), form.password);
+      navigate(authUser.role === 'admin' ? ROUTES.admin : ROUTES.dashboard);
     } catch (error: any) {
       setErrors({
-        form: error?.message || 'Invalid username or password. Please try again.',
+        form: error?.message || 'Invalid username/email or password. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
@@ -131,20 +131,20 @@ export default function LoginPage() {
 
           <div style={{ display: 'grid', gap: 18 }}>
             <div>
-              <label htmlFor="username" style={{ display: 'block', color: '#EAF6FF', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                Username
+              <label htmlFor="identifier" style={{ display: 'block', color: '#EAF6FF', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                Username or email
               </label>
               <input
-                id="username"
-                value={form.username}
-                onChange={(event) => handleChange('username', event.target.value)}
-                placeholder="Enter your username"
+                id="identifier"
+                value={form.identifier}
+                onChange={(event) => handleChange('identifier', event.target.value)}
+                placeholder="Enter your username or email"
                 autoComplete="username"
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
                   borderRadius: 12,
-                  border: `1px solid ${errors.username ? colors.danger : 'rgba(127, 209, 255, 0.25)'}`,
+                  border: `1px solid ${errors.identifier ? colors.danger : 'rgba(127, 209, 255, 0.25)'}`,
                   background: 'rgba(3, 16, 27, 0.7)',
                   color: '#fff',
                   padding: '12px 14px',
@@ -152,7 +152,7 @@ export default function LoginPage() {
                   outline: 'none',
                 }}
               />
-              {errors.username && <div style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>{errors.username}</div>}
+              {errors.identifier && <div style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>{errors.identifier}</div>}
             </div>
 
             <div>

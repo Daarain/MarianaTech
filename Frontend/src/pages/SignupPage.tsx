@@ -1,7 +1,8 @@
-import { type FormEvent, useState } from 'react';
+﻿import { type ChangeEvent, type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { login, register } from '@/api/auth';
+import { register, registerAdmin } from '@/api/auth';
 import { ROUTES } from '@/constants/routes';
+import { useAuth } from '@/hooks/useAuth';
 
 const colors = {
   pageBg: '#071827',
@@ -17,33 +18,45 @@ const colors = {
   danger: '#FF8A80',
 };
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type SignupMode = 'operator' | 'admin';
+
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { login: authenticate } = useAuth();
+  const [mode, setMode] = useState<SignupMode>('operator');
   const [form, setForm] = useState({
     name: '',
-    username: '',
+    email: '',
     password: '',
     confirmPassword: '',
+    licenseImage: null as File | null,
   });
-  const [errors, setErrors] = useState<{ name?: string; username?: string; password?: string; confirmPassword?: string; form?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; licenseImage?: string; form?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof typeof form, value: string) => {
+  const handleChange = (field: keyof typeof form, value: string | File | null) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
   };
 
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    handleChange('licenseImage', file);
+  };
+
   const validate = () => {
-    const nextErrors: { name?: string; username?: string; password?: string; confirmPassword?: string } = {};
+    const nextErrors: { name?: string; email?: string; password?: string; confirmPassword?: string; licenseImage?: string } = {};
 
     if (!form.name.trim()) {
       nextErrors.name = 'Full name is required.';
     }
 
-    if (!form.username.trim()) {
-      nextErrors.username = 'Username is required.';
-    } else if (form.username.trim().length < 3) {
-      nextErrors.username = 'Username must be at least 3 characters.';
+    if (!form.email.trim()) {
+      nextErrors.email = 'Email is required.';
+    } else if (!emailPattern.test(form.email.trim())) {
+      nextErrors.email = 'Please enter a valid email address.';
     }
 
     if (!form.password) {
@@ -56,6 +69,10 @@ export default function SignupPage() {
       nextErrors.confirmPassword = 'Please confirm your password.';
     } else if (form.password !== form.confirmPassword) {
       nextErrors.confirmPassword = 'Passwords do not match.';
+    }
+
+    if (mode === 'admin' && !form.licenseImage) {
+      nextErrors.licenseImage = 'A ship license image is required for admin access.';
     }
 
     return nextErrors;
@@ -74,9 +91,17 @@ export default function SignupPage() {
     setErrors({});
 
     try {
-      await register(form.name.trim(), form.username.trim(), form.password);
-      await login(form.username.trim(), form.password);
-      navigate(ROUTES.dashboard);
+      if (mode === 'admin') {
+        if (!form.licenseImage) {
+          throw new Error('A ship license image is required for admin access.');
+        }
+        await registerAdmin(form.name.trim(), form.email.trim(), form.password, form.licenseImage);
+      } else {
+        await register(form.name.trim(), form.email.trim(), form.password, 'operator');
+      }
+
+      const authUser = await authenticate(form.email.trim(), form.password);
+      navigate(authUser.role === 'admin' ? ROUTES.admin : ROUTES.dashboard);
     } catch (error: any) {
       const message = error?.message || 'Unable to create your account. Please try again.';
       setErrors({ form: message });
@@ -99,7 +124,7 @@ export default function SignupPage() {
       <div
         style={{
           width: '100%',
-          maxWidth: 500,
+          maxWidth: 560,
           background: colors.panel,
           border: `1px solid ${colors.border}`,
           borderRadius: 24,
@@ -140,11 +165,46 @@ export default function SignupPage() {
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '28px' }}>
-          <div style={{ marginBottom: 18 }}>
+          <div style={{ marginBottom: 16 }}>
             <div style={{ color: '#ffffff', fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Join the platform</div>
             <div style={{ color: colors.muted, fontSize: 14, lineHeight: 1.6 }}>
-              Register to begin sonar review, anomaly triage, and mission tracking.
+              Register for operator access or submit a ship license for admin approval.
             </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'rgba(7, 17, 28, 0.65)', borderRadius: 12, padding: 6, border: '1px solid rgba(127, 209, 255, 0.18)' }}>
+            <button
+              type="button"
+              onClick={() => setMode('operator')}
+              style={{
+                flex: 1,
+                border: 'none',
+                borderRadius: 10,
+                padding: '10px 12px',
+                background: mode === 'operator' ? 'linear-gradient(135deg, #0C447C 0%, #534AB7 100%)' : 'transparent',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Operator
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('admin')}
+              style={{
+                flex: 1,
+                border: 'none',
+                borderRadius: 10,
+                padding: '10px 12px',
+                background: mode === 'admin' ? 'linear-gradient(135deg, #0C447C 0%, #534AB7 100%)' : 'transparent',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Admin
+            </button>
           </div>
 
           <div style={{ display: 'grid', gap: 18 }}>
@@ -174,20 +234,20 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="username" style={{ display: 'block', color: '#EAF6FF', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-                Username
+              <label htmlFor="email" style={{ display: 'block', color: '#EAF6FF', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                Email
               </label>
               <input
-                id="username"
-                value={form.username}
-                onChange={(event) => handleChange('username', event.target.value)}
-                placeholder="Choose a username"
-                autoComplete="username"
+                id="email"
+                value={form.email}
+                onChange={(event) => handleChange('email', event.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
                   borderRadius: 12,
-                  border: `1px solid ${errors.username ? colors.danger : 'rgba(127, 209, 255, 0.25)'}`,
+                  border: `1px solid ${errors.email ? colors.danger : 'rgba(127, 209, 255, 0.25)'}`,
                   background: 'rgba(3, 16, 27, 0.7)',
                   color: '#fff',
                   padding: '12px 14px',
@@ -195,7 +255,7 @@ export default function SignupPage() {
                   outline: 'none',
                 }}
               />
-              {errors.username && <div style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>{errors.username}</div>}
+              {errors.email && <div style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>{errors.email}</div>}
             </div>
 
             <div>
@@ -233,7 +293,7 @@ export default function SignupPage() {
                 type="password"
                 value={form.confirmPassword}
                 onChange={(event) => handleChange('confirmPassword', event.target.value)}
-                placeholder="Re-enter your password"
+                placeholder="Repeat your password"
                 autoComplete="new-password"
                 style={{
                   width: '100%',
@@ -249,6 +309,33 @@ export default function SignupPage() {
               />
               {errors.confirmPassword && <div style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>{errors.confirmPassword}</div>}
             </div>
+
+            {mode === 'admin' && (
+              <div>
+                <label htmlFor="licenseImage" style={{ display: 'block', color: '#EAF6FF', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                  Ship license image
+                </label>
+                <input
+                  id="licenseImage"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleFileChange}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    borderRadius: 12,
+                    border: `1px solid ${errors.licenseImage ? colors.danger : 'rgba(127, 209, 255, 0.25)'}`,
+                    background: 'rgba(3, 16, 27, 0.7)',
+                    color: '#fff',
+                    padding: '12px 14px',
+                    fontSize: 14,
+                    outline: 'none',
+                  }}
+                />
+                {form.licenseImage && <div style={{ color: colors.muted, fontSize: 12, marginTop: 6 }}>{form.licenseImage.name}</div>}
+                {errors.licenseImage && <div style={{ color: colors.danger, fontSize: 12, marginTop: 6 }}>{errors.licenseImage}</div>}
+              </div>
+            )}
           </div>
 
           {errors.form && (
@@ -285,7 +372,7 @@ export default function SignupPage() {
               boxShadow: '0 10px 30px rgba(12, 68, 124, 0.35)',
             }}
           >
-            {isSubmitting ? 'Creating account...' : 'Create account'}
+            {isSubmitting ? (mode === 'admin' ? 'Creating admin...' : 'Creating account...') : mode === 'admin' ? 'Create admin account' : 'Create account'}
           </button>
 
           <div style={{ marginTop: 22, textAlign: 'center', color: colors.muted, fontSize: 14 }}>

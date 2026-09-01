@@ -1,5 +1,5 @@
-import { BASE_URL } from '@/constants/config';
-import { apiClient } from './client';
+﻿import { apiClient } from './client';
+
 export type AuthUser = {
   user: string;
   role: 'admin' | 'operator';
@@ -26,19 +26,45 @@ export function getAuthHeaders(): Record<string, string> {
   return {};
 }
 
-export async function login(username: string, password: string): Promise<AuthUser> {
-  const data = await apiClient.post<AuthUser>('/auth/login', { username, password });
+export async function login(identifier: string, password: string): Promise<AuthUser> {
+  const data = await apiClient.post<AuthUser>('/auth/login', {
+    username: identifier,
+    email: identifier,
+    password,
+  });
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data));
   return data;
 }
 
 export async function register(
   name: string,
-  username: string,
+  email: string,
   password: string,
-  role: 'admin' | 'operator' = 'operator'
-): Promise<{ message: string; user: { name: string; username: string; role: 'admin' | 'operator' } }> {
-  return apiClient.post('/auth/register', { name, username, password, role });
+  role: 'admin' | 'operator' = 'operator',
+  username?: string
+): Promise<{ message: string; user: { name: string; username: string; email?: string; role: 'admin' | 'operator' } }> {
+  return apiClient.post('/auth/register', { name, email, username, password, role });
+}
+
+export async function registerAdmin(
+  name: string,
+  email: string,
+  password: string,
+  licenseImage: File,
+  username?: string
+): Promise<{
+  message: string;
+  user: { name: string; username: string; email?: string; role: 'admin' | 'operator' };
+  licenseImage: { fileName: string; storagePath: string; status: string; verified: boolean; note: string };
+}> {
+  const formData = new FormData();
+  formData.append('name', name);
+  formData.append('email', email);
+  formData.append('password', password);
+  if (username) formData.append('username', username);
+  formData.append('licenseImage', licenseImage);
+
+  return apiClient.post('/auth/register-admin', formData);
 }
 
 export async function logout(): Promise<void> {

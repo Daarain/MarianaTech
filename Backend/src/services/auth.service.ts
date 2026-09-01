@@ -14,18 +14,55 @@ export interface RegisterResponse {
   user: {
     name: string;
     username: string;
+    email?: string;
     role: UserRole;
   };
 }
 
-export async function loginUser(usernameInput: string, passwordInput: string): Promise<LoginResponse> {
-  const username = usernameInput ? usernameInput.trim().toLowerCase() : '';
+export interface RegisterUserInput {
+  name: string;
+  username?: string;
+  email?: string;
+  password: string;
+  role?: UserRole;
+  licenseImage?: {
+    fileName: string;
+    storagePath: string;
+    mimeType: string;
+    uploadedAt?: Date;
+  } | null;
+}
 
-  if (!username || !passwordInput) {
-    throw new Error('Username and password are required');
+function normalizeUsername(name: string, email?: string): string {
+  const base = (usernameFromEmail(email) || name)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ') 
+    .trim()
+    .replace(/\s+/g, '.');
+
+  return base || 'user';
+}
+
+function usernameFromEmail(email?: string): string {
+  if (!email) return '';
+  const localPart = email.split('@')[0]?.trim();
+  return localPart ? localPart.replace(/[^a-z0-9]+/gi, '.') : '';
+}
+
+export async function loginUser(identifierInput: string, passwordInput: string): Promise<LoginResponse> {
+  const identifier = identifierInput ? identifierInput.trim() : '';
+
+  if (!identifier || !passwordInput) {
+    throw new Error('Username/email and password are required');
   }
 
-  const user = await User.findOne({ username, isActive: true });
+  const normalizedIdentifier = identifier.toLowerCase();
+  const user = await User.findOne({
+    isActive: true,
+    $or: [{ username: normalizedIdentifier }, { email: normalizedIdentifier }],
+  });
+
   if (!user) {
     throw new Error('Invalid credentials');
   }
@@ -55,41 +92,79 @@ export async function loginUser(usernameInput: string, passwordInput: string): P
   };
 }
 
-export async function registerUser(
-  nameInput: string,
-  usernameInput: string,
-  passwordInput: string,
-  roleInput?: UserRole
-): Promise<RegisterResponse> {
-  const name = nameInput ? nameInput.trim() : '';
-  const username = usernameInput ? usernameInput.trim().toLowerCase() : '';
-  const password = passwordInput ?? '';
-  const requestedRole = roleInput === 'admin' ? 'admin' : 'operator';
+export async function registerUser({
+  name,
+  username,
+  email,
+  password,
+  role,
+  licenseImage,
+}: RegisterUserInput): Promise<RegisterResponse> {
+  const safeName = name ? name.trim() : '';
+  const normalizedEmail = email ? email.trim().toLowerCase() : '';
+  const providedUsername = username ? username.trim().toLowerCase() : '';
+  const passwordValue = password ?? '';
+  const requestedRole = role === 'admin' ? 'admin' : 'operator';
 
-  if (!name || !username || !password) {
-    throw new Error('Name, username, and password are required');
+  if (!safeName || !passwordValue) {
+    throw new Error('Name and password are required');
   }
 
-  if (username.length < 3) {
+  if (!providedUsername && !normalizedEmail) {
+    throw new Error('Username or email is required');
+  }
+
+  const sanitizedProvidedUsername = providedUsername
+    ? providedUsername.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_.]+/g, '')
+    : '';
+  const generatedUsername = sanitizedProvidedUsername || normalizeUsername(safeName, normalizedEmail);
+  const finalUsername = generatedUsername
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_.]+/g, sanitizedProvidedUsername ? '_' : '.')
+    .replace(/\.{2,}/g, '.')
+    .replace(/_+/g, '_')
+    .replace(/^\.|\.$/g, '');
+
+  if (finalUsername.length < 3) {
     throw new Error('Username must be at least 3 characters');
   }
 
-  if (password.length < 6) {
+  if (passwordValue.length < 6) {
     throw new Error('Password must be at least 6 characters');
   }
 
-  const existingUser = await User.findOne({ username });
+  const existingUser = await User.findOne({
+    isActive: true,
+    $or: [{ username: finalUsername }, ...(normalizedEmail ? [{ email: normalizedEmail }] : [])],
+  });
+
   if (existingUser) {
-    throw new Error('Username already exists');
+    if (existingUser.username === finalUsername) {
+      throw new Error('Username already exists');
+    }
+    if (normalizedEmail && existingUser.email === normalizedEmail) {
+      throw new Error('Email already exists');
+    }
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(passwordValue, 10);
   const user = await User.create({
-    name,
-    username,
+    name: safeName,
+    username: finalUsername,
+    email: normalizedEmail || undefined,
     passwordHash,
     role: requestedRole,
     isActive: true,
+    ...(licenseImage
+      ? {
+          licenseImage: {
+            fileName: licenseImage.fileName,
+            storagePath: licenseImage.storagePath,
+            mimeType: licenseImage.mimeType,
+            uploadedAt: licenseImage.uploadedAt || new Date(),
+          },
+        }
+      : {}),
   });
 
   return {
@@ -97,6 +172,7 @@ export async function registerUser(
     user: {
       name: user.name,
       username: user.username,
+      email: user.email || undefined,
       role: user.role,
     },
   };
