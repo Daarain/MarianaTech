@@ -1,0 +1,6 @@
+{
+  "name": "MarianaTech",
+  "description": "AI-Powered Automated Underwater Marine Debris and Anomaly Detection System using Side-Scan Sonar Imagery — SIH Problem Statement 26057",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
