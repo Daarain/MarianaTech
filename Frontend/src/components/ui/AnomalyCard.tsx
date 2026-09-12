@@ -3,7 +3,7 @@ import { COLOURS } from '@/constants/colours';
 import { formatAnomalyClass, formatConfidence, formatCoordinate, formatDepth } from '@/utils/formatters';
 import ConfidenceBar from './ConfidenceBar';
 import Badge from './Badge';
-import type { Anomaly } from '@/api/mockData';
+import type { Anomaly } from '@/types/api';
 
 interface AnomalyCardProps {
   anomaly: Anomaly;

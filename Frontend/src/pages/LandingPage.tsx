@@ -1,796 +1,455 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import OceanDepthBackground from '@/components/sonar/OceanDepthBackground';
+import Submarine3DCanvas from '@/components/sonar/Submarine3DCanvas';
+import DemoVideoPlayer from '@/components/sonar/DemoVideoPlayer';
+import {
+  Waves,
+  ArrowRight,
+  ShieldCheck,
+  Radio,
+  Globe,
+  FileText,
+  Play,
+  Menu,
+  X,
+  Cpu,
+  Database,
+  CheckCircle2,
+  Mail,
+  MapPin,
+  Phone,
+  Sparkles,
+} from 'lucide-react';
+import { ROUTES } from '@/constants/routes';
 
-// ── Colour constants ─────────────────────────────────────────────
-const C = {
-  pageBg: '#0A1628',
-  oceanBlue: '#0C447C',
-  oceanBlueLight: '#378ADD',
-  oceanBlueTint: '#E6F1FB',
-  reefTeal: '#0F6E56',
-  reefTealLight: '#1D9E75',
-  bioPurple: '#534AB7',
-  bioPurpleLight: '#7F77DD',
-  bioPurpleTint: '#EEEDFE',
-  hazardRed: '#A32D2D',
-  seafloorGray: '#444441',
-  seafloorGrayLight: '#888780',
-};
+export default function LandingPage() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'home' | 'features' | 'about' | 'contact'>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [demoVideoOpen, setDemoVideoOpen] = useState(false);
 
-// ── SVG Fish components ──────────────────────────────────────────
-function SvgFish({ x, y, scale = 1, colour = '#FF8C42', speed = 1, direction = 1, depth = 0 }: {
-  x: number; y: number; scale?: number; colour?: string; speed?: number; direction?: number; depth?: number;
-}) {
-  const [pos, setPos] = useState({ x, y });
-  const [flip, setFlip] = useState(direction === -1);
-  const animRef = useRef<number>();
-  const posRef = useRef({ x, y, vx: speed * direction * 0.4, vy: 0, time: Math.random() * 100 });
-
-  useEffect(() => {
-    const animate = () => {
-      const p = posRef.current;
-      p.time += 0.02;
-      p.x += p.vx;
-      p.y += Math.sin(p.time * 1.5) * 0.3;
-
-      if (p.x > 110) { p.x = -10; p.vx = Math.abs(p.vx); setFlip(false); }
-      if (p.x < -10) { p.x = 110; p.vx = -Math.abs(p.vx); setFlip(true); }
-
-      setPos({ x: p.x, y: p.y });
-      animRef.current = requestAnimationFrame(animate);
-    };
-    animRef.current = requestAnimationFrame(animate);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, []);
-
-  return (
-    <div style={{
-      position: 'absolute',
-      left: `${pos.x}%`,
-      top: `${pos.y}%`,
-      transform: `scaleX(${flip ? -1 : 1}) scale(${scale})`,
-      transformOrigin: 'center',
-      pointerEvents: 'none',
-      zIndex: 3 + depth,
-      filter: `drop-shadow(0 0 ${4 * scale}px ${colour}88)`,
-      transition: 'filter 0.3s',
-    }}>
-      <svg width={48 * scale} height={28 * scale} viewBox="0 0 48 28">
-        {/* Tail */}
-        <path d="M38,14 L48,6 L46,14 L48,22 Z" fill={colour} opacity="0.9" />
-        {/* Body */}
-        <ellipse cx="22" cy="14" rx="18" ry="9" fill={colour} />
-        {/* Belly */}
-        <ellipse cx="20" cy="16" rx="14" ry="6" fill={`${colour}bb`} />
-        {/* Stripe */}
-        <line x1="16" y1="6" x2="16" y2="22" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" />
-        {/* Dorsal fin */}
-        <path d="M10,6 Q18,0 26,5" stroke={colour} strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.8" />
-        {/* Eye */}
-        <circle cx="8" cy="12" r="3" fill="rgba(0,0,0,0.7)" />
-        <circle cx="7" cy="11" r="1" fill="rgba(255,255,255,0.9)" />
-        {/* Pectoral fin */}
-        <path d="M18,14 Q22,18 20,22" stroke={colour} strokeWidth="2" fill="none" opacity="0.7" />
-      </svg>
-    </div>
-  );
-}
-
-function SvgJellyfish({ x, y }: { x: number; y: number }) {
-  const [pos, setPos] = useState({ x, y });
-  const animRef = useRef<number>();
-  const stateRef = useRef({ x, y, time: Math.random() * 100 });
-
-  useEffect(() => {
-    const animate = () => {
-      const s = stateRef.current;
-      s.time += 0.008;
-      s.y -= 0.04;
-      s.x += Math.sin(s.time) * 0.05;
-      if (s.y < -15) { s.y = 105; s.x = 10 + Math.random() * 80; }
-      setPos({ x: s.x, y: s.y });
-      animRef.current = requestAnimationFrame(animate);
-    };
-    animRef.current = requestAnimationFrame(animate);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, []);
-
-  return (
-    <div style={{
-      position: 'absolute', left: `${pos.x}%`, top: `${pos.y}%`,
-      pointerEvents: 'none', zIndex: 4,
-      filter: 'drop-shadow(0 0 8px rgba(127,119,221,0.7))',
-    }}>
-      <svg width="44" height="60" viewBox="0 0 44 60">
-        <defs>
-          <radialGradient id="jbg" cx="50%" cy="40%">
-            <stop offset="0%" stopColor="rgba(163,74,183,0.7)" />
-            <stop offset="100%" stopColor="rgba(83,74,183,0.2)" />
-          </radialGradient>
-        </defs>
-        <ellipse cx="22" cy="18" rx="18" ry="14" fill="url(#jbg)" stroke="rgba(163,74,183,0.6)" strokeWidth="1" />
-        <ellipse cx="22" cy="22" rx="12" ry="8" fill="rgba(200,180,255,0.15)" />
-        {[8,14,20,26,32,36].map((tx, i) => (
-          <path key={i} d={`M${tx},30 Q${tx + (i%2===0?-4:4)},${42+i*2} ${tx},${50+i*2}`}
-            stroke="rgba(163,74,183,0.5)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-// ── Bubble component ─────────────────────────────────────────────
-function Bubbles() {
-  return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }}>
-      {Array.from({ length: 20 }).map((_, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          left: `${5 + Math.random() * 90}%`,
-          bottom: `${Math.random() * 30}%`,
-          width: `${3 + Math.random() * 8}px`,
-          height: `${3 + Math.random() * 8}px`,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 35%, rgba(200,240,255,0.6), rgba(100,200,255,0.15))',
-          border: '0.5px solid rgba(150,220,255,0.4)',
-          animation: `bubbleRise ${5 + Math.random() * 8}s ease-in ${Math.random() * 8}s infinite`,
-        }} />
-      ))}
-    </div>
-  );
-}
-
-// ── Treasure Chest ───────────────────────────────────────────────
-function TreasureChest({ onOpen }: { onOpen: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [coins, setCoins] = useState<Array<{ id: number; x: number; y: number; r: number }>>([]);
-  const [glowing, setGlowing] = useState(false);
-
-  const handleClick = () => {
-    if (isOpen) { onOpen(); return; }
-    setIsOpen(true);
-    setGlowing(true);
-
-    const newCoins = Array.from({ length: 18 }, (_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * 200,
-      y: -(60 + Math.random() * 120),
-      r: (Math.random() - 0.5) * 540,
-    }));
-    setCoins(newCoins);
-    setTimeout(() => setCoins([]), 1400);
-    setTimeout(() => onOpen(), 1600);
+  const handleNavClick = (sectionId: 'home' | 'features' | 'about' | 'contact') => {
+    setActiveTab(sectionId);
+    setMobileMenuOpen(false);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      {/* Coins */}
-      {coins.map(coin => (
-        <div key={coin.id} style={{
-          position: 'absolute', top: '30%', left: '50%',
-          width: 20, height: 20, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, #FFE566, #CC8800)',
-          border: '2px solid #FFD700',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, color: '#7a5200', fontWeight: 700,
-          boxShadow: '0 0 10px #FFD70099',
-          pointerEvents: 'none', zIndex: 20,
-          animation: 'coinFly 1.2s cubic-bezier(.25,.46,.45,.94) forwards',
-          '--cx': `${coin.x}px`, '--cy': `${coin.y}px`, '--cr': `${coin.r}deg`,
-        } as React.CSSProperties}>$</div>
-      ))}
-
-      <button onClick={handleClick} style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        filter: glowing
-          ? 'drop-shadow(0 0 30px rgba(255,215,0,1)) drop-shadow(0 0 60px rgba(255,180,0,0.8))'
-          : 'drop-shadow(0 0 18px rgba(255,180,0,0.7))',
-        transition: 'filter 0.4s, transform 0.2s',
-        transform: isOpen ? 'scale(1.1)' : 'scale(1)',
-      }}>
-        <svg width="110" height="90" viewBox="0 0 110 90">
-          <defs>
-            <linearGradient id="lidGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#A0522D" />
-              <stop offset="100%" stopColor="#5C2D0A" />
-            </linearGradient>
-            <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#6B3410" />
-              <stop offset="100%" stopColor="#3D1A05" />
-            </linearGradient>
-            <linearGradient id="bandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#DAA520" />
-              <stop offset="100%" stopColor="#B8860B" />
-            </linearGradient>
-          </defs>
-
-          {/* Glow base */}
-          {isOpen && <ellipse cx="55" cy="85" rx="40" ry="6" fill="rgba(255,215,0,0.25)" />}
-
-          {/* Chest body */}
-          <rect x="8" y="46" width="94" height="42" rx="6" fill="url(#bodyGrad)" />
-          <rect x="8" y="46" width="94" height="8" rx="2" fill="url(#bandGrad)" />
-          <rect x="8" y="78" width="94" height="10" rx="4" fill="url(#bandGrad)" />
-
-          {/* Body rivets */}
-          {[18, 35, 75, 92].map(rx => (
-            <circle key={rx} cx={rx} cy="50" r="3" fill="#FFD700" opacity="0.9" />
-          ))}
-          {[18, 35, 75, 92].map(rx => (
-            <circle key={rx} cx={rx} cy="82" r="3" fill="#FFD700" opacity="0.9" />
-          ))}
-
-          {/* Vertical bands */}
-          <rect x="30" y="46" width="6" height="42" fill="url(#bandGrad)" opacity="0.7" />
-          <rect x="74" y="46" width="6" height="42" fill="url(#bandGrad)" opacity="0.7" />
-
-          {/* Lock */}
-          <rect x="46" y="58" width="18" height="14" rx="3" fill="url(#bandGrad)" />
-          <circle cx="55" cy="56" r="6" fill="none" stroke="#DAA520" strokeWidth="3" />
-          <circle cx="55" cy="63" r="2.5" fill="#3D1A05" />
-
-          {/* Glowing gems inside when open */}
-          {isOpen && (
-            <>
-              <circle cx="30" cy="62" r="6" fill="#E24B4A" opacity="0.9" />
-              <circle cx="55" cy="58" r="8" fill="#378ADD" opacity="0.9" />
-              <circle cx="80" cy="62" r="6" fill="#1D9E75" opacity="0.9" />
-              <polygon points="55,50 58,56 64,56 59,60 61,66 55,62 49,66 51,60 46,56 52,56"
-                fill="#FFD700" opacity="0.95" />
-            </>
-          )}
-
-          {/* Lid */}
-          <g style={{
-            transformOrigin: '55px 46px',
-            transform: isOpen ? 'rotateX(-115deg)' : 'rotateX(0deg)',
-            transition: 'transform 0.6s cubic-bezier(.34,1.2,.64,1)',
-          }}>
-            <rect x="8" y="16" width="94" height="32" rx="6" fill="url(#lidGrad)" />
-            <rect x="8" y="16" width="94" height="8" rx="4" fill="url(#bandGrad)" />
-            <rect x="8" y="38" width="94" height="8" rx="2" fill="url(#bandGrad)" />
-            <rect x="30" y="16" width="6" height="32" fill="url(#bandGrad)" opacity="0.7" />
-            <rect x="74" y="16" width="6" height="32" fill="url(#bandGrad)" opacity="0.7" />
-            {/* Lid rivets */}
-            {[18, 35, 75, 92].map(rx => (
-              <circle key={rx} cx={rx} cy="20" r="3" fill="#FFD700" opacity="0.9" />
-            ))}
-            {/* Lid curved top */}
-            <path d="M8,28 Q55,8 102,28" fill="url(#lidGrad)" stroke="url(#bandGrad)" strokeWidth="1" />
-          </g>
-        </svg>
-      </button>
-
-      <div style={{
-        textAlign: 'center', marginTop: 6,
-        fontSize: 12, fontWeight: 600,
-        color: isOpen ? '#7F77DD' : '#FFD700',
-        letterSpacing: '0.1em',
-        textShadow: `0 0 12px ${isOpen ? '#7F77DD' : '#FFD700'}`,
-        transition: 'all 0.4s',
-        animation: isOpen ? 'none' : 'labelPulse 2s ease-in-out infinite',
-      }}>
-        {isOpen ? '✦ ENTERING PLATFORM ✦' : '✦ OPEN TO GET STARTED ✦'}
-      </div>
-    </div>
-  );
-}
-
-// ── Feature cards ────────────────────────────────────────────────
-const FEATURES = [
-  { icon: '🎯', title: 'AI Anomaly Detection', desc: 'YOLO-powered detection across 24 underwater debris classes with 93% average confidence', colour: C.oceanBlueLight },
-  { icon: '🗺️', title: 'Real-time Geotagging', desc: 'Every detection automatically geotagged and plotted on an interactive nautical chart', colour: C.reefTealLight },
-  { icon: '👁️', title: 'Operator Verification', desc: 'Human-in-the-loop review with Confirm, Reject and Unsure workflow for every anomaly', colour: C.bioPurpleLight },
-  { icon: '📊', title: 'Instant Reports', desc: 'One-click export of mission reports in CSV, JSON and PDF formats for stakeholders', colour: '#E24B4A' },
-];
-
-const HOW_IT_WORKS = [
-  { step: '01', icon: '📡', title: 'Upload Sonar', desc: 'Drop your side-scan sonar files (.xtf, .jsf, .png, .tiff) and fill in mission metadata' },
-  { step: '02', icon: '🤖', title: 'AI Analyzes', desc: 'Our YOLO model processes every sonar ping, detecting anomalies and scoring confidence' },
-  { step: '03', icon: '✅', title: 'Review & Export', desc: 'Operators verify detections on the sonar viewer and map, then export the final report' },
-];
-
-const STATS = [
-  { value: 24, suffix: '', label: 'Anomaly Classes' },
-  { value: 93, suffix: '%', label: 'Avg Confidence' },
-  { value: 500, suffix: 'MB', label: 'Max File Size' },
-  { value: 247, suffix: '+', label: 'Pings Per Mission' },
-];
-
-// ── Counting number animation ────────────────────────────────────
-function CountUp({ target, suffix }: { target: number; suffix: string }) {
-  const [val, setVal] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  const started = useRef(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !started.current) {
-        started.current = true;
-        let start = 0;
-        const step = target / 60;
-        const interval = setInterval(() => {
-          start += step;
-          if (start >= target) { setVal(target); clearInterval(interval); }
-          else setVal(Math.floor(start));
-        }, 16);
-      }
-    });
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target]);
-
-  return <div ref={ref} style={{ fontSize: 42, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{val}{suffix}</div>;
-}
-
-// ── Main LandingPage ─────────────────────────────────────────────
-export default function LandingPage() {
-  const navigate = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const fishData = [
-    { x: 10, y: 30, scale: 0.9,  colour: '#FF8C42', speed: 0.25, direction: 1,  depth: 0 },
-    { x: 60, y: 18, scale: 0.7,  colour: '#FFD700', speed: 0.18, direction: -1, depth: 1 },
-    { x: 30, y: 55, scale: 1.1,  colour: '#FF6B6B', speed: 0.30, direction: 1,  depth: 0 },
-    { x: 80, y: 42, scale: 0.6,  colour: '#4ECDC4', speed: 0.22, direction: -1, depth: 2 },
-    { x: 5,  y: 68, scale: 0.8,  colour: '#A8E6CF', speed: 0.15, direction: 1,  depth: 1 },
-    { x: 45, y: 72, scale: 0.65, colour: '#FFB347', speed: 0.28, direction: -1, depth: 0 },
-    { x: 70, y: 25, scale: 0.75, colour: '#FF8C42', speed: 0.20, direction: 1,  depth: 2 },
-  ];
-
-  return (
-    <div style={{ background: C.pageBg, fontFamily: 'Inter, sans-serif', color: '#fff', overflowX: 'hidden' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-        @keyframes bubbleRise {
-          0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
-          10%  { opacity: 0.8; }
-          90%  { opacity: 0.5; }
-          100% { transform: translateY(-100vh) translateX(30px) scale(0.5); opacity: 0; }
-        }
-        @keyframes coinFly {
-          0%   { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
-          60%  { opacity: 1; }
-          100% { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)) scale(0.3); opacity: 0; }
-        }
-        @keyframes labelPulse {
-          0%,100% { opacity: 0.8; text-shadow: 0 0 8px #FFD700; }
-          50%      { opacity: 1;   text-shadow: 0 0 20px #FFD700, 0 0 40px #FFD70088; }
-        }
-        @keyframes heroFadeUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes lightRayAnim {
-          0%,100% { opacity: 0.15; transform: rotate(-6deg) scaleX(1); }
-          50%      { opacity: 0.35; transform: rotate(6deg) scaleX(1.4); }
-        }
-        @keyframes particleDrift {
-          0%   { transform: translateY(0) translateX(0); opacity: 0.2; }
-          50%  { opacity: 0.8; }
-          100% { transform: translateY(-80px) translateX(20px); opacity: 0; }
-        }
-        @keyframes scanLine {
-          0%   { top: 0%;   opacity: 0.6; }
-          95%  { opacity: 0.4; }
-          100% { top: 100%; opacity: 0; }
-        }
-        @keyframes sonarPing {
-          0%   { transform: scale(0); opacity: 0.8; }
-          100% { transform: scale(3); opacity: 0; }
-        }
-        @keyframes waveScroll {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        @keyframes featureFadeUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes glowPulse {
-          0%,100% { box-shadow: 0 0 20px rgba(83,74,183,0.3); }
-          50%      { box-shadow: 0 0 40px rgba(83,74,183,0.7), 0 0 80px rgba(83,74,183,0.3); }
-        }
-        @keyframes floatY {
-          0%,100% { transform: translateY(0); }
-          50%      { transform: translateY(-12px); }
-        }
-        .feature-card:hover {
-          transform: translateY(-6px) scale(1.02) !important;
-          border-color: rgba(55,138,221,0.5) !important;
-        }
-        .nav-link:hover { color: #fff !important; }
-        .cta-btn:hover  { transform: scale(1.05) !important; box-shadow: 0 8px 32px rgba(12,68,124,0.6) !important; }
-      `}</style>
-
-      {/* ── HERO SECTION ─────────────────────────────────────────── */}
-      <section style={{ position: 'relative', height: '100vh', overflow: 'hidden', minHeight: 600 }}>
-
-        {/* Video background */}
-        <video autoPlay muted loop playsInline style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover', zIndex: 0,
-        }}>
-          <source src="/videos/underwater.mp4" type="video/mp4" />
-        </video>
-
-        {/* Dark overlay */}
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 1,
-          background: 'linear-gradient(180deg, rgba(2,14,30,0.72) 0%, rgba(2,20,45,0.55) 40%, rgba(5,25,55,0.65) 70%, rgba(2,14,30,0.88) 100%)',
-        }} />
-
-        {/* Light rays */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
-          {[10, 22, 35, 50, 65, 78, 90].map((left, i) => (
-            <div key={i} style={{
-              position: 'absolute', top: 0, left: `${left}%`,
-              width: `${30 + i * 8}px`, height: '70%',
-              background: 'linear-gradient(180deg, rgba(100,200,255,0.10) 0%, transparent 100%)',
-              borderRadius: '0 0 50% 50%',
-              transformOrigin: 'top center',
-              animation: `lightRayAnim ${4 + i * 0.6}s ease-in-out ${i * 0.5}s infinite`,
-            }} />
-          ))}
-        </div>
-
-        {/* Bioluminescent particles */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
-          {Array.from({ length: 25 }).map((_, i) => (
-            <div key={i} style={{
-              position: 'absolute',
-              left: `${Math.random() * 100}%`,
-              top: `${20 + Math.random() * 70}%`,
-              width: `${2 + Math.random() * 4}px`,
-              height: `${2 + Math.random() * 4}px`,
-              borderRadius: '50%',
-              background: `radial-gradient(circle, ${i % 3 === 0 ? 'rgba(127,119,221,0.9)' : i % 3 === 1 ? 'rgba(55,138,221,0.8)' : 'rgba(29,158,117,0.8)'}, transparent)`,
-              animation: `particleDrift ${3 + Math.random() * 4}s ease-in-out ${Math.random() * 4}s infinite`,
-            }} />
-          ))}
-        </div>
-
-        {/* SVG Fish */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none' }}>
-          {fishData.map((f, i) => <SvgFish key={i} {...f} />)}
-        </div>
-
-        {/* Jellyfish */}
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none' }}>
-          <SvgJellyfish x={15} y={60} />
-          <SvgJellyfish x={82} y={45} />
-          <SvgJellyfish x={50} y={70} />
-        </div>
-
-        {/* Bubbles */}
-        <Bubbles />
-
-        {/* Sonar scan line */}
-        <div style={{
-          position: 'absolute', left: 0, right: 0, height: 2, zIndex: 4,
-          background: 'linear-gradient(90deg, transparent, rgba(55,138,221,0.6), rgba(83,74,183,0.4), transparent)',
-          animation: 'scanLine 8s linear infinite',
-          pointerEvents: 'none',
-        }} />
-
-        {/* ── NAVBAR ── */}
-        <nav style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 28px',
-          background: scrolled ? 'rgba(2,14,30,0.92)' : 'linear-gradient(180deg, rgba(2,14,30,0.7), transparent)',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          borderBottom: scrolled ? '0.5px solid rgba(55,138,221,0.2)' : 'none',
-          transition: 'all 0.4s ease',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: `linear-gradient(135deg, ${C.oceanBlue}, ${C.bioPurple})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, boxShadow: '0 0 16px rgba(83,74,183,0.5)',
-              animation: 'glowPulse 3s ease-in-out infinite',
-            }}>🌊</div>
+    <OceanDepthBackground showGrid={true} enableParallax={true} intensity="high">
+      <div className="relative flex min-h-screen flex-col justify-between px-4 sm:px-6 py-6 md:px-12 max-w-7xl mx-auto font-sans select-none page-fade-in text-white">
+        
+        {/* Top Entry Navigation Bar */}
+        <header className="sticky top-4 z-50 flex items-center justify-between border border-cyan-500/30 bg-[#050D1A]/90 px-5 py-3.5 backdrop-blur-2xl rounded-2xl shadow-[0_10px_30px_rgba(0,240,255,0.15)]">
+          <div
+            onClick={() => handleNavClick('home')}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 shadow-[0_0_20px_rgba(0,240,255,0.35)] group-hover:scale-105 transition-transform">
+              <Waves className="h-6 w-6 animate-pulse" />
+            </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', lineHeight: 1 }}>Marine AI</div>
-              <div style={{ fontSize: 10, color: C.oceanBlueLight, letterSpacing: '0.1em' }}>ANOMALY DETECTION</div>
+              <h1 className="font-mono text-base font-extrabold tracking-wider text-white group-hover:text-cyan-300 transition-colors">
+                MARIANATECH
+              </h1>
+              <span className="font-mono text-[9px] tracking-widest text-cyan-400 font-semibold uppercase block">
+                OCEAN INTELLIGENCE PLATFORM
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
-            {['Features', 'How It Works', 'Stats'].map(link => (
-              <a key={link} className="nav-link" href={`#${link.toLowerCase().replace(/ /g, '-')}`}
-                style={{ fontSize: 13, color: 'rgba(180,210,255,0.8)', textDecoration: 'none', fontWeight: 500, transition: 'color 0.2s' }}>
-                {link}
-              </a>
-            ))}
-            <button onClick={() => navigate('/dashboard')} style={{
-              padding: '8px 20px', borderRadius: 20,
-              border: '1px solid rgba(55,138,221,0.5)',
-              background: 'rgba(12,68,124,0.4)',
-              color: '#85B7EB', fontSize: 13, fontWeight: 500,
-              cursor: 'pointer', backdropFilter: 'blur(8px)',
-              transition: 'all 0.2s',
-            }}>
-              Login →
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-300">
+            <button
+              onClick={() => handleNavClick('home')}
+              className={`transition-all ${
+                activeTab === 'home'
+                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
+                  : 'hover:text-cyan-300'
+              }`}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => handleNavClick('features')}
+              className={`transition-all ${
+                activeTab === 'features'
+                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
+                  : 'hover:text-cyan-300'
+              }`}
+            >
+              Features
+            </button>
+            <button
+              onClick={() => handleNavClick('about')}
+              className={`transition-all ${
+                activeTab === 'about'
+                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
+                  : 'hover:text-cyan-300'
+              }`}
+            >
+              About
+            </button>
+            <button
+              onClick={() => handleNavClick('contact')}
+              className={`transition-all ${
+                activeTab === 'contact'
+                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
+                  : 'hover:text-cyan-300'
+              }`}
+            >
+              Contact
+            </button>
+          </nav>
+
+          {/* Action CTAs & Mobile Toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(ROUTES.dashboard)}
+              className="hidden sm:flex items-center gap-2 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-black shadow-[0_0_20px_rgba(0,240,255,0.35)] hover:scale-105 transition-all"
+            >
+              <span>Enter Platform</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg border border-cyan-500/30 bg-cyan-950/60 text-cyan-300 hover:text-white"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
-        </nav>
+        </header>
 
-        {/* ── HERO CONTENT ── */}
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 10,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          textAlign: 'center', padding: '0 24px',
-          paddingTop: 80,
-        }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '6px 16px', borderRadius: 20,
-            border: '1px solid rgba(83,74,183,0.5)',
-            background: 'rgba(83,74,183,0.15)',
-            backdropFilter: 'blur(8px)',
-            fontSize: 11, color: C.bioPurpleLight,
-            letterSpacing: '0.12em', textTransform: 'uppercase',
-            marginBottom: 20,
-            animation: 'heroFadeUp 0.8s ease-out 0.1s both',
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.bioPurpleLight, animation: 'sonarPing 2s ease-out infinite', display: 'inline-block' }} />
-            AI-Powered Sonar Analysis Platform
+        {/* Mobile Slide-down Menu Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed top-20 left-4 right-4 z-50 rounded-2xl border border-cyan-500/40 bg-[#051326]/95 p-6 backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,10,25,0.9)] space-y-4 animate-in slide-in-from-top-4">
+            <div className="flex flex-col gap-3 font-mono text-sm">
+              <button
+                onClick={() => handleNavClick('home')}
+                className="text-left px-4 py-2.5 rounded-xl border border-cyan-500/20 bg-cyan-950/40 text-cyan-300 font-bold"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => handleNavClick('features')}
+                className="text-left px-4 py-2.5 rounded-xl border border-cyan-500/20 bg-cyan-950/40 text-slate-200 hover:text-cyan-300"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => handleNavClick('about')}
+                className="text-left px-4 py-2.5 rounded-xl border border-cyan-500/20 bg-cyan-950/40 text-slate-200 hover:text-cyan-300"
+              >
+                About
+              </button>
+              <button
+                onClick={() => handleNavClick('contact')}
+                className="text-left px-4 py-2.5 rounded-xl border border-cyan-500/20 bg-cyan-950/40 text-slate-200 hover:text-cyan-300"
+              >
+                Contact
+              </button>
+            </div>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                navigate(ROUTES.dashboard);
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 py-3 text-xs font-bold text-black"
+            >
+              <span>Enter Platform</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Section 1: Hero (#home) */}
+        <section id="home" className="pt-8 pb-16 my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-950/50 px-4 py-1.5 font-mono text-xs text-cyan-300">
+              <ShieldCheck className="h-4 w-4 text-cyan-400" />
+              <span>MINISTRY OF EARTH SCIENCES (MoES) | NIOT | SIH 2026 PS 26057</span>
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-none">
+                DEEPER INSIGHTS
+              </h1>
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-gradient-cyan leading-none">
+                CLEANER OCEANS
+              </h1>
+            </div>
+
+            <p className="text-base sm:text-lg text-slate-300 max-w-2xl font-sans leading-relaxed">
+              AI-Powered Automated Underwater Marine Debris and Anomaly Detection using Side-Scan Sonar Imagery.
+            </p>
+
+            {/* Action CTAs */}
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <button
+                onClick={() => navigate(ROUTES.sonarAnalysis)}
+                className="group flex items-center gap-2.5 rounded-full border border-cyan-400/60 bg-cyan-500 px-7 py-3.5 text-xs font-extrabold text-black shadow-[0_0_30px_rgba(0,240,255,0.5)] hover:bg-cyan-400 hover:scale-105 transition-all"
+              >
+                <span>Start Analysis</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </button>
+
+              <button
+                onClick={() => setDemoVideoOpen(true)}
+                className="flex items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-950/60 px-6 py-3.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-900/60 hover:text-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)] hover:scale-105"
+              >
+                <Play className="h-3.5 w-3.5 fill-current text-cyan-400" />
+                <span>Watch Demo</span>
+              </button>
+            </div>
+
+            {/* Capability Feature Capsules */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-8 border-t border-cyan-500/20 text-xs text-slate-300">
+              <div
+                onClick={() => handleNavClick('features')}
+                className="flex items-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3 hover:border-cyan-400/50 cursor-pointer transition-colors"
+              >
+                <Radio className="h-4 w-4 text-cyan-400 shrink-0" />
+                <span>Sonar Analysis</span>
+              </div>
+              <div
+                onClick={() => handleNavClick('features')}
+                className="flex items-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3 hover:border-cyan-400/50 cursor-pointer transition-colors"
+              >
+                <ShieldCheck className="h-4 w-4 text-cyan-400 shrink-0" />
+                <span>AI Detection</span>
+              </div>
+              <div
+                onClick={() => handleNavClick('features')}
+                className="flex items-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3 hover:border-cyan-400/50 cursor-pointer transition-colors"
+              >
+                <Globe className="h-4 w-4 text-cyan-400 shrink-0" />
+                <span>Geospatial Mapping</span>
+              </div>
+              <div
+                onClick={() => handleNavClick('features')}
+                className="flex items-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3 hover:border-cyan-400/50 cursor-pointer transition-colors"
+              >
+                <FileText className="h-4 w-4 text-cyan-400 shrink-0" />
+                <span>Scientific Reports</span>
+              </div>
+            </div>
           </div>
 
-          <h1 style={{
-            fontSize: 'clamp(32px, 6vw, 68px)', fontWeight: 800,
-            lineHeight: 1.1, marginBottom: 20, maxWidth: 800,
-            background: 'linear-gradient(135deg, #ffffff 0%, #85B7EB 40%, #7F77DD 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            animation: 'heroFadeUp 0.8s ease-out 0.3s both',
-          }}>
-            Discover What Lies<br />Beneath the Surface
-          </h1>
-
-          <p style={{
-            fontSize: 'clamp(14px, 2vw, 18px)', color: 'rgba(160,210,255,0.85)',
-            maxWidth: 560, lineHeight: 1.7, marginBottom: 48,
-            animation: 'heroFadeUp 0.8s ease-out 0.5s both',
-          }}>
-            AI-powered side-scan sonar analysis to detect ghost nets, shipwrecks,
-            containers and marine debris — in real time, at depth.
-          </p>
-
-          <div style={{ animation: 'heroFadeUp 0.8s ease-out 0.7s both, floatY 4s ease-in-out 1.5s infinite' }}>
-            <TreasureChest onOpen={() => navigate('/dashboard')} />
+          {/* Interactive 3D Submarine ROV Canvas Hero Visualization */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center">
+            <Submarine3DCanvas className="h-[380px] w-full" depthMeters={320} showHUD={true} />
+            <div className="mt-3 flex items-center justify-between w-full font-mono text-[10px] text-slate-400 px-1">
+              <span className="italic">"Exploring Today for a Cleaner Tomorrow"</span>
+              <span className="font-bold text-cyan-400">— NIOT | MoES</span>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Wave transition at bottom */}
-            <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0,
-            zIndex: 5, height: 160, pointerEvents: 'none',
-            }}>
-            {/* Gradient fade — removes the hard line */}
-            <div style={{
-                position: 'absolute', inset: 0,
-                background: `linear-gradient(to bottom,
-                transparent 0%,
-                rgba(10,22,40,0.4) 40%,
-                rgba(10,22,40,0.85) 70%,
-                #0A1628 100%)`,
-                zIndex: 1,
-            }} />
-
-            {/* Wave */}
-            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, lineHeight: 0, overflow: 'hidden', zIndex: 2 }}>
-                <svg viewBox="0 0 1440 60" preserveAspectRatio="none"
-                style={{ width: '200%', height: 60, animation: 'waveScroll 12s linear infinite', display: 'block' }}>
-                <path d="M0,30 Q180,60 360,30 Q540,0 720,30 Q900,60 1080,30 Q1260,0 1440,30 L1440,60 L0,60 Z" fill="#0A1628" />
-                <path d="M0,30 Q180,60 360,30 Q540,0 720,30 Q900,60 1080,30 Q1260,0 1440,30 L1440,60 L0,60 Z" fill="#0A1628" transform="translate(1440,0)" />
-                </svg>
+        {/* Section 2: Features (#features) */}
+        <section id="features" className="py-16 border-t border-cyan-500/20 space-y-10">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-950/50 px-3.5 py-1 font-mono text-xs text-cyan-300">
+              <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+              <span>ADVANCED UNDERWATER INTELLIGENCE</span>
             </div>
-            </div>
-      </section>
-
-      {/* ── FEATURES SECTION ─────────────────────────────────────── */}
-      <section id="features" style={{ padding: '80px 24px', background: C.pageBg, position: 'relative' }}>
-        <div style={{
-          position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)',
-          width: 600, height: 400, borderRadius: '50%',
-          background: `radial-gradient(ellipse, ${C.oceanBlue}22, transparent 70%)`,
-          pointerEvents: 'none',
-        }} />
-
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{ fontSize: 11, color: C.bioPurpleLight, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
-              ✦ Platform Capabilities
-            </div>
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 700, color: '#fff', marginBottom: 14 }}>
-              Everything you need to detect<br />underwater threats
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+              Platform Features & Capabilities
             </h2>
-            <p style={{ fontSize: 15, color: 'rgba(160,200,255,0.7)', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
-              From raw sonar upload to verified report — Marine AI handles the full detection pipeline
+            <p className="text-sm text-slate-300">
+              Automated end-to-end processing pipeline for marine survey teams, oceanographic research, and hydrographic analysis.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
-            {FEATURES.map((f, i) => (
-              <div key={i} className="feature-card" style={{
-                background: 'linear-gradient(135deg, rgba(13,31,60,0.9), rgba(8,20,40,0.95))',
-                border: '0.5px solid rgba(55,138,221,0.2)',
-                borderRadius: 16, padding: '28px 24px',
-                transition: 'all 0.35s ease',
-                animation: `featureFadeUp 0.6s ease-out ${0.1 + i * 0.12}s both`,
-                cursor: 'default',
-                position: 'relative', overflow: 'hidden',
-              }}>
-                <div style={{
-                  position: 'absolute', top: -30, right: -30,
-                  width: 100, height: 100, borderRadius: '50%',
-                  background: `radial-gradient(circle, ${f.colour}18, transparent)`,
-                  pointerEvents: 'none',
-                }} />
-                <div style={{
-                  width: 52, height: 52, borderRadius: 14,
-                  background: `linear-gradient(135deg, ${f.colour}22, ${f.colour}11)`,
-                  border: `1px solid ${f.colour}44`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 24, marginBottom: 18,
-                  boxShadow: `0 0 16px ${f.colour}33`,
-                }}>
-                  {f.icon}
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 10 }}>{f.title}</div>
-                <div style={{ fontSize: 13, color: 'rgba(160,200,255,0.7)', lineHeight: 1.7 }}>{f.desc}</div>
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-                  background: `linear-gradient(90deg, transparent, ${f.colour}66, transparent)`,
-                }} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Feature 1 */}
+            <div className="sonar-panel rounded-2xl p-6 space-y-4 hover:border-cyan-400/50 transition-all group">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-950 border border-cyan-500/40 text-cyan-300 group-hover:scale-110 transition-transform">
+                <Radio className="h-6 w-6" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ─────────────────────────────────────────── */}
-      <section id="how-it-works" style={{
-        padding: '80px 24px',
-        background: 'linear-gradient(180deg, #0A1628 0%, #0d1f3c 50%, #0A1628 100%)',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }}>
-          {[200, 350, 500].map((size, i) => (
-            <div key={i} style={{
-              position: 'absolute', top: '50%', left: '50%',
-              width: size, height: size, borderRadius: '50%',
-              border: `1px solid rgba(55,138,221,${0.08 - i * 0.02})`,
-              transform: 'translate(-50%,-50%)',
-              animation: `sonarPing ${4 + i * 2}s ease-out ${i * 1.5}s infinite`,
-            }} />
-          ))}
-        </div>
-
-        <div style={{ maxWidth: 900, margin: '0 auto', position: 'relative' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{ fontSize: 11, color: C.reefTealLight, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
-              ✦ Simple 3-Step Workflow
+              <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
+                Sonar Data Ingestion
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Parse raw Side-Scan Sonar files (.tif, .png, .jpg) with automated speckle noise removal and gain normalization.
+              </p>
+              <button
+                onClick={() => navigate(ROUTES.missionNew)}
+                className="font-mono text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              >
+                <span>Ingest Sonar</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>How It Works</h2>
-          </div>
 
-          <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start', position: 'relative' }}>
-            <div style={{
-              position: 'absolute', top: 36, left: '16%', right: '16%', height: 1,
-              background: `linear-gradient(90deg, ${C.oceanBlue}44, ${C.bioPurple}44, ${C.reefTeal}44)`,
-              zIndex: 0,
-            }} />
-            {HOW_IT_WORKS.map((step, i) => (
-              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 20px', position: 'relative', zIndex: 1 }}>
-                <div style={{
-                  width: 72, height: 72, borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${C.oceanBlue}, ${C.bioPurple})`,
-                  border: '2px solid rgba(55,138,221,0.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 28, margin: '0 auto 20px',
-                  boxShadow: `0 0 24px rgba(83,74,183,0.4)`,
-                  animation: `glowPulse ${3 + i}s ease-in-out ${i * 0.5}s infinite`,
-                }}>
-                  {step.icon}
-                </div>
-                <div style={{ fontSize: 11, color: C.bioPurpleLight, letterSpacing: '0.1em', marginBottom: 8 }}>STEP {step.step}</div>
-                <div style={{ fontSize: 17, fontWeight: 600, color: '#fff', marginBottom: 10 }}>{step.title}</div>
-                <div style={{ fontSize: 13, color: 'rgba(160,200,255,0.7)', lineHeight: 1.7 }}>{step.desc}</div>
+            {/* Feature 2 */}
+            <div className="sonar-panel rounded-2xl p-6 space-y-4 hover:border-cyan-400/50 transition-all group">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-950 border border-cyan-400/40 text-cyan-300 group-hover:scale-110 transition-transform">
+                <Cpu className="h-6 w-6" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── STATS SECTION ────────────────────────────────────────── */}
-      <section id="stats" style={{ padding: '80px 24px', background: C.pageBg }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{ fontSize: 11, color: C.oceanBlueLight, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
-              ✦ Platform Numbers
+              <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
+                AI Anomaly Detection
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                YOLOv8 deep learning neural network specifically trained to classify marine debris, shipwrecks, cables, and seafloor anomalies.
+              </p>
+              <button
+                onClick={() => navigate(ROUTES.admin)}
+                className="font-mono text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              >
+                <span>Inspect Model</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
             </div>
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 700, color: '#fff' }}>
-              Built for real marine operations
+
+            {/* Feature 3 */}
+            <div className="sonar-panel rounded-2xl p-6 space-y-4 hover:border-cyan-400/50 transition-all group">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-950 border border-cyan-400/40 text-cyan-300 group-hover:scale-110 transition-transform">
+                <Globe className="h-6 w-6" />
+              </div>
+              <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
+                Geospatial Mapping
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Map detections directly to real-world bathymetric survey tracks with exact latitude, longitude, and depth geotagging.
+              </p>
+              <button
+                onClick={() => navigate(ROUTES.dashboard)}
+                className="font-mono text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              >
+                <span>View Map</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="sonar-panel rounded-2xl p-6 space-y-4 hover:border-cyan-400/50 transition-all group">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-950 border border-cyan-400/40 text-cyan-300 group-hover:scale-110 transition-transform">
+                <FileText className="h-6 w-6" />
+              </div>
+              <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
+                Scientific Reports
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Generate standardized hydrographic survey analysis reports with printable light modes, PDF downloads, and CSV data exports.
+              </p>
+              <button
+                onClick={() => navigate(ROUTES.dashboard)}
+                className="font-mono text-[11px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+              >
+                <span>Generate Report</span>
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: About NIOT & MoES (#about) */}
+        <section id="about" className="py-16 border-t border-cyan-500/20 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-6 space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-950/50 px-3.5 py-1 font-mono text-xs text-cyan-300">
+              <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
+              <span>NATIONAL INSTITUTE OF OCEAN TECHNOLOGY</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+              Pioneering Marine Survey & Ecosystem Preservation
             </h2>
-          </div>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Developed under the Ministry of Earth Sciences (MoES) for Smart India Hackathon 2026 (Problem Statement 26057), MarianaTech empowers researchers and naval hydrographers to map ocean floor anomalies with sub-meter spatial accuracy.
+            </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-            {STATS.map((stat, i) => (
-              <div key={i} style={{
-                background: 'linear-gradient(135deg, rgba(13,31,60,0.9), rgba(8,20,40,0.95))',
-                border: '0.5px solid rgba(55,138,221,0.2)',
-                borderRadius: 16, padding: '28px 20px', textAlign: 'center',
-                animation: `featureFadeUp 0.6s ease-out ${0.1 + i * 0.1}s both`,
-              }}>
-                <CountUp target={stat.value} suffix={stat.suffix} />
-                <div style={{ fontSize: 13, color: 'rgba(160,200,255,0.7)', marginTop: 8 }}>{stat.label}</div>
+            <div className="grid grid-cols-2 gap-4 font-mono text-xs pt-2">
+              <div className="sonar-panel p-4 rounded-xl space-y-1">
+                <div className="text-xl font-extrabold text-cyan-400">&lt; 1.2s</div>
+                <div className="text-slate-400">AI Inference Speed</div>
               </div>
-            ))}
+              <div className="sonar-panel p-4 rounded-xl space-y-1">
+                <div className="text-xl font-extrabold text-cyan-400">0.87+</div>
+                <div className="text-slate-400">Model Accuracy (mAP)</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
 
-      {/* ── FINAL CTA ────────────────────────────────────────────── */}
-      <section style={{
-        padding: '80px 24px 100px', textAlign: 'center',
-        background: `linear-gradient(180deg, ${C.pageBg}, #0d1f3c)`,
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, lineHeight: 0, overflow: 'hidden' }}>
-          <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ width: '200%', height: 60, animation: 'waveScroll 10s linear infinite reverse' }}>
-            <path d="M0,30 Q180,60 360,30 Q540,0 720,30 Q900,60 1080,30 Q1260,0 1440,30 L1440,0 L0,0 Z" fill={C.pageBg} />
-            <path d="M0,30 Q180,60 360,30 Q540,0 720,30 Q900,60 1080,30 Q1260,0 1440,30 L1440,0 L0,0 Z" fill={C.pageBg} transform="translate(1440,0)" />
-          </svg>
-        </div>
+          <div className="lg:col-span-6 sonar-panel rounded-2xl p-6 space-y-4 border border-cyan-500/30">
+            <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-cyan-500/20 pb-3">
+              <Database className="h-4 w-4 text-cyan-400" />
+              <span>System Verification & Security</span>
+            </h3>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 600, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, color: C.bioPurpleLight, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 16 }}>
-            ✦ Ready to dive in?
+            <div className="space-y-3 font-sans text-xs text-slate-300">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>On-premise / edge deployment compatibility for naval research vessels.</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Zero fabricated data policy — raw sonar signals strictly preserved.</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>Compatible with standard GeoTIFF and hydrographic Sonar log formats.</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate(ROUTES.dashboard)}
+              className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl border border-cyan-400/50 bg-cyan-950/60 py-3 font-mono text-xs font-bold text-cyan-300 hover:bg-cyan-900/60 hover:text-white transition-all"
+            >
+              <span>Explore Platform Dashboard</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
-          <h2 style={{ fontSize: 'clamp(24px, 4vw, 42px)', fontWeight: 800, color: '#fff', marginBottom: 16, lineHeight: 1.2 }}>
-            Start your first<br />sonar mission today
-          </h2>
-          <p style={{ fontSize: 15, color: 'rgba(160,200,255,0.7)', marginBottom: 40, lineHeight: 1.7 }}>
-            Upload your side-scan sonar files and let our AI find what's hiding on the ocean floor
-          </p>
-          <button className="cta-btn" onClick={() => navigate('/dashboard')} style={{
-            padding: '16px 40px', borderRadius: 50,
-            background: `linear-gradient(135deg, ${C.oceanBlue}, ${C.bioPurple})`,
-            border: 'none', color: '#fff', fontSize: 16, fontWeight: 600,
-            cursor: 'pointer', letterSpacing: '0.04em',
-            boxShadow: '0 4px 20px rgba(83,74,183,0.4)',
-            transition: 'all 0.3s ease',
-          }}>
-            🚀 Launch Platform
-          </button>
-        </div>
-      </section>
+        </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────── */}
-      <footer style={{
-        padding: '24px 28px', background: '#020E1E',
-        borderTop: '0.5px solid rgba(55,138,221,0.15)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 16 }}>🌊</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Marine AI</span>
-          <span style={{ fontSize: 12, color: C.seafloorGrayLight, marginLeft: 4 }}>— Anomaly Detection Platform</span>
-        </div>
-        <div style={{ fontSize: 12, color: C.seafloorGrayLight }}>SIH 2026 · Team Project</div>
-      </footer>
-    </div>
+        {/* Section 4: Contact & Support (#contact) */}
+        <section id="contact" className="py-16 border-t border-cyan-500/20 space-y-8">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <h2 className="text-3xl font-extrabold text-white">Contact & Support</h2>
+            <p className="text-sm text-slate-300">
+              Operational inquiries, hydrographic survey team onboarding, and technical assistance.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto font-mono text-xs">
+            <div className="sonar-panel rounded-2xl p-6 text-center space-y-3">
+              <MapPin className="h-6 w-6 text-cyan-400 mx-auto" />
+              <div className="font-bold text-white uppercase">Headquarters</div>
+              <div className="text-slate-400 text-[11px]">NIOT Campus, Velachery-Tambaram Main Road, Pallikaranai, Chennai, India</div>
+            </div>
+
+            <div className="sonar-panel rounded-2xl p-6 text-center space-y-3">
+              <Mail className="h-6 w-6 text-cyan-400 mx-auto" />
+              <div className="font-bold text-white uppercase">Official Email</div>
+              <div className="text-slate-400 text-[11px]">support@marianatech.niot.res.in</div>
+            </div>
+
+            <div className="sonar-panel rounded-2xl p-6 text-center space-y-3">
+              <Phone className="h-6 w-6 text-cyan-400 mx-auto" />
+              <div className="font-bold text-white uppercase">Telemetry Hotline</div>
+              <div className="text-slate-400 text-[11px]">+91 (44) 6678-3300 (Ext 402)</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Demo Video Interactive Player Modal */}
+        {demoVideoOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+            <div className="w-full max-w-4xl">
+              <DemoVideoPlayer onClose={() => setDemoVideoOpen(false)} />
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <footer className="border-t border-cyan-500/20 pt-6 pb-2 flex flex-wrap items-center justify-between gap-4 font-mono text-xs text-slate-400">
+          <span>MARIANATECH PLATFORM • SIH 2026 PS 26057</span>
+          <span>NATIONAL INSTITUTE OF OCEAN TECHNOLOGY (NIOT) | MoES</span>
+        </footer>
+      </div>
+    </OceanDepthBackground>
   );
 }

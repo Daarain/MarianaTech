@@ -1,122 +1,134 @@
-import { Bell } from 'lucide-react';
-import { COLOURS } from '@/constants/colours';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Search,
+  Bell,
+  User,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Database,
+  Cpu,
+  CheckCircle2,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { apiFetch } from '@/api/client';
+import { ROUTES } from '@/constants/routes';
 
 interface HeaderProps {
-  title: string;
+  title?: string;
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export default function Header({ title }: HeaderProps) {
+export const Header: React.FC<HeaderProps> = ({
+  isSidebarCollapsed = false,
+  onToggleSidebar,
+}) => {
   const { user } = useAuth();
-  const initials = (user?.user ?? 'OP')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [backendStatus, setBackendStatus] = useState<'online' | 'offline'>('online');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    apiFetch<{ status: string }>('/health')
+      .then(() => {
+        if (active) setBackendStatus('online');
+      })
+      .catch(() => {
+        if (active) setBackendStatus('offline');
+      });
+    return () => {
+      active = false;
+    };
+  }, [location.pathname]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`${ROUTES.history}?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   return (
-    <header
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 20px 12px 68px', // 68px left padding to clear the hamburger button
-        backgroundColor: 'rgba(10, 22, 40, 0.88)',
-        backdropFilter: 'blur(14px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        boxShadow: '0 1px 0 rgba(55,138,221,0.08)',
-      }}
-    >
-      {/* Page title */}
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: COLOURS.textPrimary, margin: 0 }}>
-        {title}
-      </h2>
+    <header className="sticky top-0 z-30 flex items-center justify-between border-b border-cyan-500/20 bg-[#050D1A]/90 px-4 py-2.5 backdrop-blur-xl select-none gap-4">
+      {/* Left: Sidebar Toggle & Global Search Bar */}
+      <div className="flex items-center gap-3 flex-1 max-w-xl shrink">
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="rounded-lg p-1.5 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 transition-colors shrink-0"
+            title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+          </button>
+        )}
 
-      {/* Right side actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Global Command Search Bar */}
+        <form onSubmit={handleSearchSubmit} className="relative w-full max-w-md min-w-[160px]">
+          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search missions, analyses, or detections..."
+            className="w-full rounded-lg border border-cyan-500/30 bg-[#0A1628]/80 py-1.5 pl-9 pr-3 font-sans text-xs text-cyan-200 placeholder-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/40 transition-all truncate"
+          />
+        </form>
+      </div>
 
-        {/* Notification bell */}
+      {/* Right: Operational Status Badges, Notifications & Operator Avatar */}
+      <div className="flex items-center gap-3 shrink-0">
+        {/* Backend Online Status Pill */}
+        <div className="hidden md:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-950/60 px-3 py-1 font-mono text-[10px] font-bold text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)] shrink-0">
+          <span className={`h-2 w-2 rounded-full ${backendStatus === 'online' ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'}`} />
+          {backendStatus === 'online' ? 'SYSTEM ONLINE' : 'SERVER OFFLINE'}
+        </div>
+
+        {/* Ocean Data Status Pill */}
+        <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 px-3 py-1 font-mono text-[10px] font-semibold text-cyan-300 shrink-0">
+          <Database className="h-3 w-3 text-cyan-400 shrink-0" />
+          <span>OCEAN DATA READY</span>
+        </div>
+
+        {/* AI Model Ready Pill */}
+        <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-950/40 px-3 py-1 font-mono text-[10px] font-semibold text-cyan-300 shrink-0">
+          <Cpu className="h-3 w-3 text-cyan-400 shrink-0" />
+          <span>AI MODEL READY</span>
+        </div>
+
+        <div className="h-4 w-[1px] bg-cyan-500/20 hidden sm:block shrink-0" />
+
+        {/* Notifications Icon with Badge */}
         <button
-          style={{
-            position: 'relative',
-            width: 38,
-            height: 38,
-            borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.07)',
-            background: 'rgba(255,255,255,0.03)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: COLOURS.seafloor.light,
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-            e.currentTarget.style.color = '#fff';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-            e.currentTarget.style.color = COLOURS.seafloor.light;
-          }}
+          onClick={() => navigate(ROUTES.history)}
+          className="relative rounded-lg border border-cyan-500/20 bg-cyan-950/30 p-1.5 text-cyan-300 hover:bg-cyan-900/40 hover:text-white transition-colors shrink-0"
+          title="Notifications"
         >
-          <Bell size={18} />
-          {/* Red dot */}
-          <span style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            width: 7,
-            height: 7,
-            borderRadius: '50%',
-            background: COLOURS.hazard.light,
-            boxShadow: `0 0 6px ${COLOURS.hazard.light}`,
-            border: '1.5px solid rgba(10,22,40,0.9)',
-          }} />
+          <Bell className="h-4 w-4" />
+          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 font-mono text-[9px] font-bold text-white">
+            1
+          </span>
         </button>
 
-        {/* Divider */}
-        <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.08)' }} />
-
-        {/* User avatar + info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'default' }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: `linear-gradient(135deg, ${COLOURS.ocean.base}, ${COLOURS.ocean.light})`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 13,
-            fontWeight: 700,
-            color: '#fff',
-            boxShadow: `0 0 12px ${COLOURS.ocean.base}66`,
-            border: '1.5px solid rgba(55,138,221,0.3)',
-            letterSpacing: '0.04em',
-          }}>
-            {initials}
+        {/* Operator Profile Avatar */}
+        <div className="flex items-center gap-2 font-mono text-xs pl-1 shrink-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-950 border border-cyan-400/40 text-cyan-300 font-bold shadow-[0_0_10px_rgba(0,240,255,0.2)] shrink-0">
+            <User className="h-4 w-4" />
           </div>
-          <div style={{ display: 'none' }} className="sm-show">
-            <div style={{ fontSize: 13, fontWeight: 600, color: COLOURS.textPrimary, lineHeight: 1.2 }}>
-              {user?.user ?? 'Operator'}
-            </div>
-            <div style={{ fontSize: 11, color: COLOURS.seafloor.light, textTransform: 'capitalize', lineHeight: 1.2 }}>
-              {user?.role ?? 'operator'}
-            </div>
+          <div className="hidden sm:flex flex-col shrink-0">
+            <span className="font-bold text-slate-100 leading-tight truncate">{user?.user || 'Lt. R. Mehta'}</span>
+            <span className="text-[9px] text-cyan-400 uppercase font-semibold leading-tight truncate">{user?.role || 'Operator'}</span>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (min-width: 480px) {
-          .sm-show { display: block !important; }
-        }
-      `}</style>
     </header>
   );
-}
+};
+
+export default Header;

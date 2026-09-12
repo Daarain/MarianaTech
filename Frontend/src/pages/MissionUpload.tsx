@@ -1,676 +1,768 @@
-import { useState, useRef, useCallback, useEffect, type DragEvent, type ChangeEvent } from 'react';
+import React, { useState, useRef, useCallback, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Waves,
   Upload,
   File as FileIcon,
   X,
-  Check,
-  Save,
-  AlertCircle,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
+  Globe,
+  Sliders,
+  Radio,
+  Layers,
+  ArrowRight,
+  Database,
+  Activity,
+  FileText,
+  Maximize2,
+  Trash2,
+  Zap,
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import { COLOURS } from '@/constants/colours';
-import { useAuth } from '@/hooks/useAuth';
-import { createMission, type CreateMissionPayload } from '@/api/missions';
+import { ROUTES } from '@/constants/routes';
+import { useDetection } from '@/hooks/useDetection';
+import { useToast } from '@/context/ToastContext';
+import { useMissionContext } from '@/context/MissionContext';
+import ImageViewerFrame from '@/components/sonar/ImageViewerFrame';
+import SonarGrid from '@/components/sonar/SonarGrid';
+import Panel from '@/components/ui/Panel';
+import Button from '@/components/ui/Button';
+import StatusIndicator from '@/components/ui/StatusIndicator';
+import ProgressBar from '@/components/ui/ProgressBar';
 
-type FileStatus = 'queued' | 'validating' | 'ready' | 'error';
+export type IngestionState =
+  | 'IDLE'
+  | 'SELECTED'
+  | 'VALIDATING'
+  | 'UPLOADING'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'INVALID';
 
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  status: FileStatus;
-  progress: number;
-}
+const ALLOWED_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.tiff', '.bmp'];
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit
 
-const ACCEPTED_EXT = ['.xtf', '.jsf', '.png', '.tiff'];
-const MAX_SIZE = 500 * 1024 * 1024;
+
+const LOCATION_PRESETS = [
+  { label: 'Chagos Trench (Indian Ocean)', lat: -6.3000, lon: 71.2000 },
+  { label: 'Carlsberg Ridge (Arabian Sea)', lat: 3.8000, lon: 64.5000 },
+  { label: 'Andaman Basin (Bay of Bengal)', lat: 10.2000, lon: 93.8000 },
+];
 
 function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 Bytes';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
-
-const STATUS_CHIP_COLOURS: Record<FileStatus, { bg: string; text: string }> = {
-  queued: { bg: 'rgba(136, 135, 128, 0.2)', text: COLOURS.seafloor.light },
-  validating: { bg: 'rgba(83, 74, 183, 0.2)', text: COLOURS.bio.light },
-  ready: { bg: 'rgba(15, 110, 86, 0.2)', text: COLOURS.reef.light },
-  error: { bg: 'rgba(163, 45, 45, 0.2)', text: COLOURS.hazard.light },
-};
-
-const SONAR_TYPES = ['Side-Scan Sonar', 'Multibeam', 'Sub-bottom Profiler'];
-
-const BUBBLES = Array.from({ length: 7 }, (_, i) => ({
-  id: i,
-  size: 4 + Math.random() * 6,
-  left: 10 + Math.random() * 80,
-  duration: 4 + Math.random() * 4,
-  delay: Math.random() * 4,
-  drift: `${(Math.random() - 0.5) * 40}px`,
-}));
 
 export default function MissionUpload() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { setStagedDataset, setStagedDetectionResult } = useMissionContext();
+  const { analyze, loading: isAnalyzing, error: apiError, result: detectionResult, reset: resetDetection } = useDetection();
 
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [state, setState] = useState<IngestionState>('IDLE');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isHover, setIsHover] = useState(false);
-  const [ripple, setRipple] = useState(false);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [nameError, setNameError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Geographic coordinates
+  const [latitude, setLatitude] = useState<number>(-6.3000);
+  const [longitude, setLongitude] = useState<number>(71.2000);
+  const [latInput, setLatInput] = useState<string>('-6.3000');
+  const [lonInput, setLonInput] = useState<string>('71.2000');
+  const [locationName, setLocationName] = useState<string>('Chagos Trench, Indian Ocean');
+
+  // Real image dimensions extracted locally
+  const [imageDimensions, setImageDimensions] = useState<{
+    width: number;
+    height: number;
+    aspectRatio: number;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
-    missionName: '',
-    date: new Date().toISOString().slice(0, 10),
-    vessel: '',
-    location: '',
-    depthMin: '',
-    depthMax: '',
-    sonarType: SONAR_TYPES[0],
-    notes: '',
-    operatorName: user?.user ?? '',
-  });
-
-  const updateField = (key: string, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    if (key === 'missionName' && value) setNameError(false);
-  };
-
-  const simulateProgress = useCallback((fileId: string) => {
-    setFiles((prev) =>
-      prev.map((f) => (f.id === fileId ? { ...f, status: 'validating' } : f))
-    );
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 15 + 5;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId ? { ...f, status: 'ready', progress: 100 } : f
-          )
-        );
-      } else {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId ? { ...f, progress } : f
-          )
-        );
+  // Revoke object URL on unmount or file change
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
-    }, 200);
-  }, []);
+    };
+  }, [previewUrl]);
 
-  const addFiles = useCallback(
-    (fileList: FileList | File[]) => {
-      setFileError(null);
-      const newFiles: UploadedFile[] = [];
-      const arr = Array.from(fileList);
-      arr.forEach((file) => {
-        const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-        if (!ACCEPTED_EXT.includes(ext)) return;
-        if (file.size > MAX_SIZE) return;
-        newFiles.push({
-          id: `${Date.now()}-${file.name}-${Math.random()}`,
-          name: file.name,
-          size: file.size,
-          status: 'queued',
-          progress: 0,
-        });
-      });
-      if (newFiles.length === 0) {
-        setFileError('No valid files. Supported: .xtf, .jsf, .png, .tiff (max 500MB)');
-        return;
-      }
-      setFiles((prev) => [...prev, ...newFiles]);
-      newFiles.forEach((f, i) => {
-        setTimeout(() => simulateProgress(f.id), i * 200);
-      });
-    },
-    [simulateProgress]
-  );
+  // Client-side file validation & preview generation
+  const handleFileSelection = useCallback((file: File) => {
+    // 1. Reset state
+    resetDetection();
+    setValidationError(null);
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+
+    // 2. Validate Extension
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      setSelectedFile(null);
+      setImageDimensions(null);
+      setValidationError(
+        `Unsupported file extension '${ext}'. Accepted formats: ${ALLOWED_EXTENSIONS.join(', ').toUpperCase()}`
+      );
+      setState('INVALID');
+      showToast(`Invalid file format '${ext}'`, 'error');
+      return;
+    }
+
+    // 3. Validate Size
+    if (file.size === 0) {
+      setSelectedFile(null);
+      setImageDimensions(null);
+      setValidationError('Selected sonar file is empty (0 bytes).');
+      setState('INVALID');
+      showToast('Uploaded file is empty', 'error');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setSelectedFile(null);
+      setImageDimensions(null);
+      setValidationError(`File size (${formatBytes(file.size)}) exceeds maximum ingestion limit (500 MB).`);
+      setState('INVALID');
+      showToast('File size limit exceeded', 'error');
+      return;
+    }
+
+    // 4. File is valid on client
+    setSelectedFile(file);
+    setState('VALIDATING');
+
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    setStagedDataset(file, url, latitude, longitude);
+
+    // 5. Read image dimensions
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const ar = h > 0 ? parseFloat((w / h).toFixed(3)) : 1;
+      setImageDimensions({ width: w, height: h, aspectRatio: ar });
+      setState('SELECTED');
+      showToast(`Sonar image validated (${w}x${h}px)`, 'success');
+    };
+    img.onerror = () => {
+      setState('INVALID');
+      setValidationError('Failed to decode image data. File may be corrupted or unreadable.');
+      showToast('Image decoding failed', 'error');
+    };
+    img.src = url;
+  }, [previewUrl, resetDetection, setStagedDataset, latitude, longitude, showToast]);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (e.dataTransfer.files.length > 0) {
-      setRipple(true);
-      setTimeout(() => setRipple(false), 800);
-      addFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleBrowse = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setRipple(true);
-      setTimeout(() => setRipple(false), 800);
-      addFiles(e.target.files);
+      handleFileSelection(e.target.files[0]);
     }
   };
 
-  const removeFile = (id: string) => {
-    setFiles((prev) => prev.filter((f) => f.id !== id));
+  const handleLatitudeChange = (val: string) => {
+    setLatInput(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed >= -90 && parsed <= 90) {
+      setLatitude(parsed);
+      if (selectedFile && previewUrl) {
+        setStagedDataset(selectedFile, previewUrl, parsed, longitude);
+      }
+    }
   };
 
-  const isFormValid =
-    form.missionName.trim() !== '' &&
-    form.location.trim() !== '' &&
-    files.some((f) => f.status === 'ready');
-
-  const handleSubmit = async () => {
-    if (files.length === 0) {
-      setFileError('At least one sonar file is required');
-      return;
+  const handleLongitudeChange = (val: string) => {
+    setLonInput(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed >= -180 && parsed <= 180) {
+      setLongitude(parsed);
+      if (selectedFile && previewUrl) {
+        setStagedDataset(selectedFile, previewUrl, latitude, parsed);
+      }
     }
-    if (!form.missionName.trim()) {
-      setNameError(true);
-      return;
-    }
+  };
 
-    setSubmitting(true);
-    const payload: CreateMissionPayload = {
-      missionName: form.missionName,
-      date: form.date,
-      vessel: form.vessel,
-      location: form.location,
-      depthMin: Number(form.depthMin) || 0,
-      depthMax: Number(form.depthMax) || 0,
-      sonarType: form.sonarType,
-      notes: form.notes,
-      operatorName: form.operatorName,
-      files: files.map((f) => ({ name: f.name, size: f.size })),
-    };
+  const handleSelectPreset = (preset: typeof LOCATION_PRESETS[0]) => {
+    setLatitude(preset.lat);
+    setLongitude(preset.lon);
+    setLatInput(preset.lat.toFixed(4));
+    setLonInput(preset.lon.toFixed(4));
+    setLocationName(preset.label);
+    if (selectedFile && previewUrl) {
+      setStagedDataset(selectedFile, previewUrl, preset.lat, preset.lon);
+    }
+    showToast(`Coordinates updated to ${preset.label}`, 'info');
+  };
+
+  const handleClearFile = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setSelectedFile(null);
+    setImageDimensions(null);
+    setValidationError(null);
+    resetDetection();
+    setStagedDataset(null, null);
+    setStagedDetectionResult(null);
+    setState('IDLE');
+    setUploadProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleStartIngestion = async () => {
+    if (!selectedFile) return;
+
+    setState('UPLOADING');
+    setUploadProgress(15);
+    const progressTimer = setInterval(() => {
+      setUploadProgress((prev) => (prev < 85 ? prev + 15 : prev));
+    }, 250);
 
     try {
-      const result = await createMission(payload);
-      setShowSuccess(true);
-      setTimeout(() => {
-        navigate(`/missions/${result.id}/status`);
-      }, 1200);
-    } catch {
-      setFileError('Failed to create mission. Please try again.');
-      setSubmitting(false);
+      showToast('Submitting sonar dataset to backend processing engine...', 'info');
+      const data = await analyze(selectedFile, latitude, longitude);
+      clearInterval(progressTimer);
+      setUploadProgress(100);
+      setState('SUCCESS');
+      setStagedDetectionResult(data);
+      showToast(`Ingestion complete! ${data.anomalies_detected} contacts detected.`, 'success');
+    } catch (err: any) {
+      clearInterval(progressTimer);
+      setUploadProgress(0);
+      setState('FAILED');
+      showToast(err?.message || 'Ingestion request failed', 'error');
     }
-  };
-
-  const inputStyle = (hasError?: boolean): React.CSSProperties => ({
-    backgroundColor: 'rgba(12, 68, 124, 0.08)',
-    border: `1px solid ${hasError ? COLOURS.hazard.base : 'rgba(255,255,255,0.1)'}`,
-    color: COLOURS.textPrimary,
-    borderRadius: '10px',
-    padding: '10px 14px',
-    fontSize: '14px',
-    width: '100%',
-    outline: 'none',
-    transition: 'border-color 0.2s, box-shadow 0.3s',
-  });
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: COLOURS.seafloor.light,
-    marginBottom: '6px',
-    display: 'block',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
   };
 
   return (
-    <PageLayout title="Mission Upload">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Left column — 60% */}
-        <div className="lg:col-span-3 space-y-4">
-          {/* Drop zone */}
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragOver(true);
-            }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={handleDrop}
-            onMouseEnter={() => setIsHover(true)}
-            onMouseLeave={() => setIsHover(false)}
-            onClick={() => fileInputRef.current?.click()}
-            className="relative cursor-pointer overflow-hidden rounded-2xl transition-all duration-300"
-            style={{
-              border: `2px dashed ${isDragOver ? COLOURS.bio.light : isHover ? COLOURS.bio.light : COLOURS.ocean.light}`,
-              backgroundColor: isDragOver
-                ? 'rgba(83, 74, 183, 0.10)'
-                : isHover
-                ? 'rgba(83, 74, 183, 0.06)'
-                : 'rgba(12, 68, 124, 0.10)',
-              animation: isDragOver
-                ? 'borderSpin 1.5s linear infinite'
-                : undefined,
-              backgroundSize: isDragOver ? '200% 100%' : undefined,
-            }}
-          >
-            {/* Bubble particles */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              {BUBBLES.map((b) => (
-                <span
-                  key={b.id}
-                  className="absolute bottom-0 rounded-full"
-                  style={{
-                    width: b.size,
-                    height: b.size,
-                    left: `${b.left}%`,
-                    backgroundColor: 'rgba(55, 138, 221, 0.20)',
-                    animation: `bubbleRise ${b.duration}s ease-in infinite`,
-                    animationDelay: `${b.delay}s`,
-                    ['--drift' as string]: b.drift,
-                  }}
-                />
-              ))}
+    <PageLayout title="Sonar Data Ingestion">
+      <div className="flex flex-col gap-6">
+        {/* Header telemetry banner */}
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-cyan-500/20 bg-[#050D1A]/90 p-4 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <Database className="h-5 w-5" />
             </div>
-
-            {/* Ripple on drop */}
-            {ripple && (
-              <div
-                className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{
-                  width: 40,
-                  height: 40,
-                  border: `3px solid ${COLOURS.bio.light}`,
-                  animation: 'dropRipple 0.8s ease-out forwards',
-                }}
-              />
-            )}
-
-            <div className="relative flex flex-col items-center justify-center py-12 text-center">
-              <div
-                className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
-                style={{
-                  backgroundColor: `${COLOURS.ocean.base}33`,
-                  color: COLOURS.ocean.light,
-                }}
-              >
-                <Waves size={32} strokeWidth={1.8} />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-semibold">
+                  ACQUISITION STATION
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="font-mono text-[10px] text-slate-400">SIH 2026 / NIOT-MoES</span>
               </div>
-              <p className="text-lg font-semibold" style={{ color: COLOURS.textPrimary }}>
-                Drop sonar files here
-              </p>
-              <p className="mt-1 text-xs" style={{ color: COLOURS.seafloor.light }}>
-                Supports .xtf, .jsf, .png, .tiff — max 500MB per file
-              </p>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
-                }}
-                className="mt-4 rounded-lg px-5 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
-                style={{ backgroundColor: COLOURS.ocean.base, color: COLOURS.white }}
-              >
-                Browse files
-              </button>
+              <h2 className="text-lg font-bold text-white tracking-wide">
+                Side-Scan Sonar Data Ingestion Workflow
+              </h2>
             </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".xtf,.jsf,.png,.tiff"
-              onChange={handleBrowse}
-              className="hidden"
-            />
           </div>
 
-          {/* File error */}
-          {fileError && (
-            <div className="flex items-center gap-2 text-sm" style={{ color: COLOURS.hazard.light }}>
-              <AlertCircle size={16} />
-              {fileError}
-            </div>
-          )}
-
-          {/* Uploaded files list */}
-          {files.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: COLOURS.seafloor.light }}>
-                Uploaded Files ({files.length})
-              </p>
-              {files.map((f) => {
-                const chip = STATUS_CHIP_COLOURS[f.status];
-                return (
-                  <div
-                    key={f.id}
-                    className="rounded-xl border p-3"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                      borderColor: 'rgba(255,255,255,0.06)',
-                      animation: 'fileSlideIn 0.3s ease-out forwards',
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                        style={{ backgroundColor: `${COLOURS.ocean.base}22`, color: COLOURS.ocean.light }}
-                      >
-                        <FileIcon size={16} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium" style={{ color: COLOURS.textPrimary }}>
-                          {f.name}
-                        </p>
-                        <p className="text-xs" style={{ color: COLOURS.seafloor.light }}>
-                          {formatBytes(f.size)}
-                        </p>
-                      </div>
-                      <span
-                        className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                        style={{ backgroundColor: chip.bg, color: chip.text }}
-                      >
-                        {f.status.charAt(0).toUpperCase() + f.status.slice(1)}
-                      </span>
-                      <button
-                        onClick={() => removeFile(f.id)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/5"
-                        style={{ color: COLOURS.seafloor.light }}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    {/* Progress bar with shimmer */}
-                    <div
-                      className="mt-2 h-1.5 overflow-hidden rounded-full"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-                    >
-                      <div
-                        className="relative h-full rounded-full overflow-hidden transition-all duration-200"
-                        style={{
-                          width: `${f.progress}%`,
-                          backgroundColor: f.status === 'ready' ? COLOURS.reef.light : COLOURS.ocean.light,
-                        }}
-                      >
-                        {f.status === 'validating' && (
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              background: `linear-gradient(90deg, transparent, ${COLOURS.reef.tint}80, transparent)`,
-                              animation: 'progressShimmer 1.5s linear infinite',
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <StatusIndicator
+              status={
+                state === 'SUCCESS'
+                  ? 'online'
+                  : state === 'UPLOADING' || state === 'VALIDATING'
+                  ? 'warning'
+                  : state === 'FAILED' || state === 'INVALID'
+                  ? 'error'
+                  : state === 'SELECTED'
+                  ? 'ready'
+                  : 'offline'
+              }
+              label={
+                state === 'SUCCESS'
+                  ? 'DATASET READY'
+                  : state === 'UPLOADING'
+                  ? 'INGESTING DATA...'
+                  : state === 'VALIDATING'
+                  ? 'VALIDATING FILE'
+                  : state === 'FAILED'
+                  ? 'INGESTION FAILED'
+                  : state === 'INVALID'
+                  ? 'INVALID INPUT'
+                  : state === 'SELECTED'
+                  ? 'FILE STAGED'
+                  : 'AWAITING INPUT'
+              }
+            />
+          </div>
         </div>
 
-        {/* Right column — 40% */}
-        <div className="lg:col-span-2">
-          <div
-            className="rounded-2xl border p-5"
-            style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' }}
-          >
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider" style={{ color: COLOURS.seafloor.light }}>
-              Mission Metadata
-            </h3>
-            <div className="space-y-4">
-              {/* Mission Name */}
-              <div>
-                <label style={labelStyle}>Mission Name</label>
-                <input
-                  type="text"
-                  value={form.missionName}
-                  onChange={(e) => updateField('missionName', e.target.value)}
-                  placeholder="e.g. Chagos Trench Survey"
-                  style={inputStyle(nameError)}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = nameError ? COLOURS.hazard.base : 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-                {nameError && (
-                  <p className="mt-1 text-xs" style={{ color: COLOURS.hazard.light }}>
-                    Mission name is required
-                  </p>
-                )}
-              </div>
+        {/* Main Grid: Left Column Ingestion / Preview (60%), Right Column Metadata / Coordinates (40%) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Left Column (7 cols on lg) */}
+          <div className="lg:col-span-7 flex flex-col gap-6">
 
-              {/* Mission Date */}
-              <div>
-                <label style={labelStyle}>Mission Date</label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => updateField('date', e.target.value)}
-                  style={inputStyle()}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
+            {/* Tactical Dropzone if NO file selected or file invalid */}
+            {(state === 'IDLE' || state === 'INVALID') && (
+              <Panel title="SONAR DATA INGESTION ZONE">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
                   }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`relative cursor-pointer overflow-hidden rounded-lg border-2 border-dashed p-10 text-center transition-all duration-300 ${
+                    isDragOver
+                      ? 'border-cyan-400 bg-cyan-950/40 shadow-[0_0_25px_rgba(6,182,212,0.25)]'
+                      : state === 'INVALID'
+                      ? 'border-rose-500/40 bg-rose-950/20 hover:border-rose-500/60'
+                      : 'border-cyan-500/30 bg-[#050D1A]/80 hover:border-cyan-400/60 hover:bg-cyan-950/20'
+                  }`}
+                >
+                  <SonarGrid className="absolute inset-0 z-0 opacity-20 pointer-events-none" />
 
-              {/* Vessel */}
-              <div>
-                <label style={labelStyle}>Vessel / Platform</label>
-                <input
-                  type="text"
-                  value={form.vessel}
-                  onChange={(e) => updateField('vessel', e.target.value)}
-                  placeholder="e.g. RV Sagar Nidhi"
-                  style={inputStyle()}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+                  <div className="relative z-10 flex flex-col items-center justify-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                      <Upload className="h-8 w-8 animate-pulse" />
+                    </div>
 
-              {/* Location */}
-              <div>
-                <label style={labelStyle}>Survey Area / Location</label>
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={(e) => updateField('location', e.target.value)}
-                  placeholder="e.g. Gulf of Mannar, India"
-                  style={inputStyle()}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">
+                        {isDragOver ? 'DROP SONAR DATA FILE HERE' : 'IMPORT SIDE-SCAN SONAR DATA'}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
+                        Drag and drop supported acoustic sonar imagery or select a file from your computer to initialize ingestion pipeline.
+                      </p>
+                    </div>
 
-              {/* Depth range */}
-              <div>
-                <label style={labelStyle}>Water Depth Range</label>
-                <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-cyan-300">
+                      <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.PNG</span>
+                      <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.JPG / .JPEG</span>
+                      <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.TIFF</span>
+                      <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.BMP</span>
+                      <span className="text-slate-400">| Max limit: 500 MB</span>
+                    </div>
+
+                    <Button variant="outline" size="sm" className="mt-2">
+                      <FileIcon className="h-4 w-4 mr-2" />
+                      SELECT FROM COMPUTER
+                    </Button>
+                  </div>
+
                   <input
-                    type="number"
-                    value={form.depthMin}
-                    onChange={(e) => updateField('depthMin', e.target.value)}
-                    placeholder="Min"
-                    style={inputStyle()}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = COLOURS.bio.base;
-                      e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
-                  <span style={{ color: COLOURS.seafloor.light }} className="text-sm">—</span>
-                  <input
-                    type="number"
-                    value={form.depthMax}
-                    onChange={(e) => updateField('depthMax', e.target.value)}
-                    placeholder="Max"
-                    style={inputStyle()}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = COLOURS.bio.base;
-                      e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.tiff,.bmp"
+                    onChange={handleBrowse}
+                    className="hidden"
                   />
                 </div>
-                <p className="mt-1 text-xs" style={{ color: COLOURS.seafloor.light }}>metres</p>
-              </div>
+              </Panel>
+            )}
 
-              {/* Sonar Type */}
-              <div>
-                <label style={labelStyle}>Sonar Type</label>
-                <select
-                  value={form.sonarType}
-                  onChange={(e) => updateField('sonarType', e.target.value)}
-                  style={inputStyle()}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
+            {/* Invalid File Banner */}
+            {state === 'INVALID' && validationError && (
+              <div className="rounded-lg border border-rose-500/40 bg-rose-950/40 p-4 font-mono text-xs text-rose-200">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-1">
+                    <h4 className="font-bold uppercase tracking-wider text-rose-300">
+                      INVALID SONAR INPUT
+                    </h4>
+                    <p className="text-slate-300 text-xs">{validationError}</p>
+                    <div className="pt-2 flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleClearFile}
+                        className="border-rose-500/30 text-rose-200 hover:bg-rose-900/40"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1.5" />
+                        SELECT ANOTHER FILE
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sonar Image Preview Frame when File is Staged or Processed */}
+            {previewUrl && selectedFile && state !== 'INVALID' && (
+              <div className="flex flex-col gap-3">
+                <ImageViewerFrame
+                  title={selectedFile.name.toUpperCase()}
+                  resolution={
+                    imageDimensions
+                      ? `${imageDimensions.width} x ${imageDimensions.height} px`
+                      : 'DECODING...'
+                  }
+                  lat={latitude}
+                  lon={longitude}
+                  sonarType="Side-Scan Sonar 900 kHz"
+                  isScanning={state === 'UPLOADING' || state === 'VALIDATING'}
                 >
-                  {SONAR_TYPES.map((t) => (
-                    <option key={t} value={t} style={{ backgroundColor: '#0A1628' }}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label style={labelStyle}>Notes / Description</label>
-                <textarea
-                  rows={3}
-                  value={form.notes}
-                  onChange={(e) => updateField('notes', e.target.value)}
-                  placeholder="Additional mission context..."
-                  style={{ ...inputStyle(), resize: 'vertical' }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-
-              {/* Operator */}
-              <div>
-                <label style={labelStyle}>Operator Name</label>
-                <input
-                  type="text"
-                  value={form.operatorName}
-                  onChange={(e) => updateField('operatorName', e.target.value)}
-                  style={inputStyle()}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = COLOURS.bio.base;
-                    e.target.style.boxShadow = '0 0 0 3px rgba(83, 74, 183, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgba(255,255,255,0.1)';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="mt-5 space-y-3">
-              <div className="relative overflow-hidden rounded-xl">
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="relative w-full overflow-hidden rounded-xl py-3 text-sm font-bold transition-all duration-300 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: showSuccess ? COLOURS.reef.base : COLOURS.ocean.base,
-                    color: COLOURS.white,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!submitting && !showSuccess) {
-                      const wave = e.currentTarget.querySelector('[data-wave]') as HTMLElement;
-                      if (wave) wave.style.animation = 'buttonWave 1.5s ease-in-out infinite';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    const wave = e.currentTarget.querySelector('[data-wave]') as HTMLElement;
-                    if (wave) wave.style.animation = 'none';
-                  }}
-                >
-                  {/* Wave overlay */}
-                  <span
-                    data-wave
-                    className="pointer-events-none absolute inset-0"
-                    style={{
-                      background: `linear-gradient(90deg, transparent, ${COLOURS.ocean.light}40, transparent)`,
-                      animation: 'none',
-                    }}
+                  <img
+                    src={previewUrl}
+                    alt="Side-Scan Sonar Preview"
+                    className="max-h-[480px] w-full object-contain rounded"
                   />
-                  <span className="relative flex items-center justify-center gap-2">
-                    {showSuccess ? (
-                      <>
-                        <Check size={18} /> Mission Created
-                      </>
-                    ) : submitting ? (
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOURS.white, animation: 'sonarDot 1.2s ease-in-out infinite' }} />
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOURS.white, animation: 'sonarDot 1.2s ease-in-out 0.2s infinite' }} />
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLOURS.white, animation: 'sonarDot 1.2s ease-in-out 0.4s infinite' }} />
-                      </span>
-                    ) : (
-                      <>
-                        <Upload size={16} /> Start Mission
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
+                </ImageViewerFrame>
 
-              <button
-                onClick={() => {
-                  setForm((prev) => ({ ...prev, missionName: '', vessel: '', location: '', notes: '', depthMin: '', depthMax: '' }));
-                  setFiles([]);
-                  setFileError(null);
-                  setNameError(false);
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-semibold transition-colors hover:bg-white/5"
-                style={{
-                  borderColor: 'rgba(255,255,255,0.12)',
-                  color: COLOURS.seafloor.light,
-                }}
-              >
-                <Save size={16} /> Save as Draft
-              </button>
-            </div>
+                {/* Staged File Action Control Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/20 bg-[#050D1A]/90 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-cyan-900/40 text-cyan-400">
+                      <FileIcon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs font-bold text-white truncate max-w-xs">
+                        {selectedFile.name}
+                      </p>
+                      <p className="font-mono text-[10px] text-slate-400">
+                        Size: {formatBytes(selectedFile.size)} • Type: {selectedFile.type || 'image/raw'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearFile}
+                      disabled={state === 'UPLOADING'}
+                      className="text-slate-400 hover:text-rose-400"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      REMOVE
+                    </Button>
+
+                    {state === 'SELECTED' && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleStartIngestion}
+                        disabled={isAnalyzing}
+                      >
+                        <Zap className="h-4 w-4 mr-1.5" />
+                        INGEST & ANALYZE SONAR DATA
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload In-Progress State */}
+            {state === 'UPLOADING' && (
+              <Panel title="INGESTION STREAM IN PROGRESS">
+                <div className="space-y-4 py-2 font-mono">
+                  <div className="flex items-center justify-between text-xs text-cyan-300">
+                    <span className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-cyan-400 animate-spin" />
+                      TRANSMITTING MULTIPART SONAR PAYLOAD TO BACKEND...
+                    </span>
+                    <span className="font-bold text-cyan-400">{uploadProgress}%</span>
+                  </div>
+
+                  <ProgressBar value={uploadProgress} variant="cyan" />
+
+                  <p className="text-[11px] text-slate-400">
+                    Executing backend preprocessing, spatial registration, and noise filter verification on target host.
+                  </p>
+                </div>
+              </Panel>
+            )}
+
+            {/* Success State Panel */}
+            {state === 'SUCCESS' && (
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-950/30 p-5 font-mono">
+                <div className="flex items-start gap-4">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-emerald-300 tracking-wide">
+                        SONAR DATA RECEIVED & VERIFIED
+                      </h4>
+                      <p className="text-xs text-slate-300 mt-1">
+                        File successfully processed by the MarianaTech ingestion engine. Preprocessing metrics and anomaly candidates registered.
+                      </p>
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap items-center gap-3">
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => navigate(ROUTES.missionViewer.replace(':id', 'MSN-2026-0142'))}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold"
+                      >
+                        CONTINUE TO ANALYSIS WORKSPACE
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleClearFile}
+                        className="border-emerald-500/30 text-emerald-200"
+                      >
+                        INGEST ANOTHER DATASET
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ingestion Failure State Panel */}
+            {state === 'FAILED' && (
+              <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-5 font-mono">
+                <div className="flex items-start gap-4">
+                  <AlertTriangle className="h-6 w-6 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-rose-300 tracking-wide">
+                        INGESTION FAILED
+                      </h4>
+                      <p className="text-xs text-rose-200 mt-1">
+                        {apiError || 'Backend ingestion endpoint returned an error or network request failed.'}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-3">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleStartIngestion}
+                        className="bg-rose-600 hover:bg-rose-500 text-white"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                        RETRY UPLOAD
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleClearFile}
+                        className="border-rose-500/30 text-rose-200"
+                      >
+                        REMOVE FILE
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Right Column: Metadata & Geospatial Configuration (5 cols on lg) */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+
+            {/* Geographic Coordinates Configuration Panel */}
+            <Panel title="GEOSPATIAL COORDINATES">
+              <div className="space-y-4 font-mono text-xs">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <Globe className="h-4 w-4 text-cyan-400" />
+                  <span className="font-semibold text-white">Survey Location Origin</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">LATITUDE (°N/S)</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="-90"
+                      max="90"
+                      value={latInput}
+                      onChange={(e) => handleLatitudeChange(e.target.value)}
+                      disabled={state === 'UPLOADING'}
+                      className="w-full rounded bg-cyan-950/40 border border-cyan-500/30 px-3 py-2 text-cyan-300 font-mono focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">LONGITUDE (°E/W)</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="-180"
+                      max="180"
+                      value={lonInput}
+                      onChange={(e) => handleLongitudeChange(e.target.value)}
+                      disabled={state === 'UPLOADING'}
+                      className="w-full rounded bg-cyan-950/40 border border-cyan-500/30 px-3 py-2 text-cyan-300 font-mono focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1.5">LOCATION PRESETS</label>
+                  <div className="flex flex-col gap-1.5">
+                    {LOCATION_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => handleSelectPreset(preset)}
+                        disabled={state === 'UPLOADING'}
+                        className={`flex items-center justify-between rounded px-2.5 py-1.5 text-left text-[11px] transition-colors ${
+                          latitude === preset.lat && longitude === preset.lon
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                            : 'bg-slate-900/60 text-slate-400 hover:bg-cyan-950/30 hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{preset.label}</span>
+                        <span className="text-[10px] text-cyan-500 font-mono">
+                          [{preset.lat}, {preset.lon}]
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded bg-slate-900/60 p-3 border border-slate-800 text-[11px] text-slate-400">
+                  <span className="text-slate-300 font-semibold">GEOLOCATION SUMMARY:</span>
+                  <div className="mt-1 flex items-center justify-between text-cyan-400 font-bold">
+                    <span>{locationName}</span>
+                    <span>{latitude.toFixed(4)}°, {longitude.toFixed(4)}°</span>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+
+            {/* File & Image Technical Information */}
+            <Panel title="FILE TECHNICAL METADATA">
+              {selectedFile && imageDimensions ? (
+                <div className="space-y-3 font-mono text-xs text-slate-300">
+                  <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                    <span className="text-slate-400">Filename:</span>
+                    <span className="text-white font-semibold truncate max-w-[200px]" title={selectedFile.name}>
+                      {selectedFile.name}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                    <span className="text-slate-400">File Size:</span>
+                    <span className="text-cyan-300">{formatBytes(selectedFile.size)}</span>
+                  </div>
+
+                  <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                    <span className="text-slate-400">MIME / Extension:</span>
+                    <span className="text-cyan-300">
+                      {selectedFile.type || `.${selectedFile.name.split('.').pop()}`}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                    <span className="text-slate-400">Dimensions:</span>
+                    <span className="text-cyan-300 font-bold">
+                      {imageDimensions.width} × {imageDimensions.height} px
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                    <span className="text-slate-400">Aspect Ratio:</span>
+                    <span className="text-cyan-300">{imageDimensions.aspectRatio} : 1</span>
+                  </div>
+
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">Local Object URL:</span>
+                    <span className="text-emerald-400 font-semibold">STAGED</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center font-mono text-xs text-slate-500">
+                  <FileText className="h-8 w-8 mx-auto text-slate-700 mb-2" />
+                  <span>NO FILE SELECTED FOR METADATA EXTRACTION</span>
+                </div>
+              )}
+            </Panel>
+
+            {/* Backend Extraction & Preprocessing Metrics */}
+            <Panel title="BACKEND EXTRACTION METRICS">
+              {detectionResult ? (
+                <div className="space-y-3 font-mono text-xs text-slate-300">
+                  <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                    <span className="text-slate-400">Engine Status:</span>
+                    <span className="text-emerald-400 font-bold uppercase">{detectionResult.status}</span>
+                  </div>
+
+                  {detectionResult.metadata && (
+                    <>
+                      <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                        <span className="text-slate-400">Image Format:</span>
+                        <span className="text-cyan-300">{detectionResult.metadata.format}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                        <span className="text-slate-400">Color Mode:</span>
+                        <span className="text-cyan-300">{detectionResult.metadata.mode}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                        <span className="text-slate-400">EXIF Data Present:</span>
+                        <span className={detectionResult.metadata.has_exif ? 'text-emerald-400' : 'text-slate-400'}>
+                          {detectionResult.metadata.has_exif ? 'YES' : 'NO'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {detectionResult.preprocessing_metrics && (
+                    <>
+                      <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                        <span className="text-slate-400">Raw SNR:</span>
+                        <span className="text-cyan-300 font-semibold">
+                          {detectionResult.preprocessing_metrics.raw_snr} dB
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                        <span className="text-slate-400">Mean Intensity:</span>
+                        <span className="text-cyan-300 font-semibold">
+                          {detectionResult.preprocessing_metrics.mean_intensity}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between py-1 border-b border-cyan-500/10">
+                        <span className="text-slate-400">Noise Reduction Factor:</span>
+                        <span className="text-cyan-300 font-semibold">
+                          {detectionResult.preprocessing_metrics.noise_reduction_factor}x
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex justify-between py-1 pt-1">
+                    <span className="text-slate-400">Detected Anomaly Contacts:</span>
+                    <span className="text-cyan-400 font-bold text-sm">
+                      {detectionResult.anomalies_detected} contacts
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center font-mono text-xs text-slate-500">
+                  <Activity className="h-8 w-8 mx-auto text-slate-700 mb-2" />
+                  <span>AWAITING BACKEND INGESTION FOR PREPROCESSING METRICS</span>
+                </div>
+              )}
+            </Panel>
+
           </div>
         </div>
       </div>

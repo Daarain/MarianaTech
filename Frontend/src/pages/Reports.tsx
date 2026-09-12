@@ -1,250 +1,404 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FileText, File, Download, ChevronDown } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  FileText,
+  Download,
+  Printer,
+  FileCode,
+  SlidersHorizontal,
+  RotateCcw,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  Layers,
+  MapPin,
+  Compass,
+  ArrowLeft,
+  Search,
+} from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
-import { COLOURS } from '@/constants/colours';
-import { getAnomalies } from '@/api/anomalies';
-import type { Anomaly } from '@/api/mockData';
-
-type Format = 'csv' | 'json' | 'pdf';
+import { ROUTES } from '@/constants/routes';
+import { useMissionContext } from '@/context/MissionContext';
+import { useToast } from '@/context/ToastContext';
+import { getMissionById } from '@/api/missions';
+import { getAnomalies as getMissionAnomalies } from '@/api/anomalies';
+import type { Mission, Anomaly } from '@/types/api';
+import {
+  buildAnalysisReportModel,
+  exportReportJSON,
+  exportReportCSV,
+  triggerReportPrint,
+  type ReportExportScope,
+  type AnalysisReportModel,
+} from '@/utils/reportUtils';
+import { getClassMetadata, filterDetectionsCombined } from '@/utils/classificationUtils';
+import { formatConfidenceLabel, normalizeConfidence } from '@/utils/confidenceUtils';
+import { formatCoordinate, isValidCoordinate } from '@/utils/geolocationUtils';
+import Panel from '@/components/ui/Panel';
+import Button from '@/components/ui/Button';
+import StatusIndicator from '@/components/ui/StatusIndicator';
 
 export default function Reports() {
-  const [format, setFormat] = useState<Format>('csv');
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
-  const [loadingAnoms, setLoadingAnoms] = useState(true);
-  const [missionId] = useState(() => 'MSN-2026-0142');
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const {
+    stagedFile,
+    stagedLatitude,
+    stagedLongitude,
+    stagedDetectionResult,
+    selectedAnomaly,
+    setSelectedAnomaly,
+  } = useMissionContext();
 
-  // Filters
-  const [includeFilter, setIncludeFilter] = useState<'confirmed' | 'all_reviewed' | 'all'>('confirmed');
-  const [fromDate, setFromDate] = useState<string>('2026-08-01');
-  const [toDate, setToDate] = useState<string>('2026-08-31');
-  const [classFilters, setClassFilters] = useState<Record<string, boolean>>({ ghostnet: true, shipwreck: true, container: true, pipe: true, debris: true });
-  const [minConfidence, setMinConfidence] = useState<number>(0);
+  const missionId = id || 'MSN-2026-0142';
+  const [mission, setMission] = useState<Mission | null>(null);
+  const [existingAnomalies, setExistingAnomalies] = useState<Anomaly[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState<{ url: string; name: string; format: Format } | null>(null);
+  // Scope & Filter State
+  const [exportScope, setExportScope] = useState<ReportExportScope>('FULL_ANALYSIS');
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0);
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const [pastExports] = useState(() => [
-    { name: 'MSN-2026-0142-summary-2026-08-22.csv', format: 'csv' as Format, date: '2026-08-22T15:12:00Z', size: '24 KB' },
-    { name: 'MSN-2026-0142-detections-2026-08-20.json', format: 'json' as Format, date: '2026-08-20T09:42:00Z', size: '128 KB' },
-    { name: 'MSN-2026-0142-report-2026-08-18.pdf', format: 'pdf' as Format, date: '2026-08-18T13:05:00Z', size: '512 KB' },
-  ]);
+  // Generation Feedback State
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
 
+  // Load mission details if no staged detection result
   useEffect(() => {
     let mounted = true;
-    setLoadingAnoms(true);
-    // using first mission from mock - for demo purposes
-    getAnomalies(missionId)
-      .then((d) => {
+    setLoading(true);
+
+    Promise.all([getMissionById(missionId), getMissionAnomalies(missionId)])
+      .then(([m, anoms]) => {
         if (!mounted) return;
-        setAnomalies(d);
+        setMission(m);
+        setExistingAnomalies(anoms);
       })
-      .catch(() => {})
-      .finally(() => mounted && setLoadingAnoms(false));
-    return () => { mounted = false; };
+      .catch((err) => {
+        console.warn('Failed to load mission for reports view:', err);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, [missionId]);
 
-  const classMap = {
-    ghostnet: 'unidentified_object',
-    shipwreck: 'shipwreck',
-    container: 'unidentified_object',
-    pipe: 'pipeline_damage',
-    debris: 'debris_field',
-  } as Record<string, string>;
-
-  const filtered = useMemo(() => {
-    return anomalies.filter((a) => {
-      // class filter
-      const classKey = Object.keys(classMap).find((k) => classMap[k] === a.class_name) ?? 'ghostnet';
-      if (!classFilters[classKey]) return false;
-      // confidence
-      if (a.confidence * 100 < minConfidence) return false;
-      // include filter
-      if (includeFilter === 'confirmed' && a.status !== 'verified') return false;
-      if (includeFilter === 'all_reviewed' && a.status === 'pending_review') return false;
-      // date range
-      const d = new Date(a.detected_at || a.detected_at || '2026-08-22');
-      if (fromDate && new Date(fromDate) > d) return false;
-      if (toDate && new Date(toDate) < d) return false;
-      return true;
-    });
-  }, [anomalies, classFilters, minConfidence, includeFilter, fromDate, toDate]);
-
-  const breakdown = useMemo(() => {
-    const map = new Map<string, { count: number; avg: number }>();
-    for (const a of filtered) {
-      const k = a.class_name;
-      const cur = map.get(k) ?? { count: 0, avg: 0 };
-      cur.count += 1;
-      cur.avg += a.confidence;
-      map.set(k, cur);
+  // Compute raw anomaly detections list (from live result or mission fallback)
+  const rawAnomalies: Anomaly[] = useMemo(() => {
+    if (stagedDetectionResult && stagedDetectionResult.anomalies) {
+      return stagedDetectionResult.anomalies;
     }
-    const out: { cls: string; count: number; avg: number }[] = [];
-    for (const [k, v] of map.entries()) out.push({ cls: k, count: v.count, avg: v.avg / v.count });
-    return out;
-  }, [filtered]);
+    return existingAnomalies;
+  }, [stagedDetectionResult, existingAnomalies]);
 
-  function toggleClassFilter(key: string) {
-    setClassFilters((s) => ({ ...s, [key]: !s[key] }));
-  }
+  // Compute filtered anomalies list
+  const visibleAnomalies: Anomaly[] = useMemo(() => {
+    return filterDetectionsCombined(
+      rawAnomalies,
+      selectedClassFilter,
+      confidenceThreshold,
+      searchQuery
+    );
+  }, [rawAnomalies, selectedClassFilter, confidenceThreshold, searchQuery]);
 
-  async function handleGenerate() {
-    setGenerating(true);
-    setGenerated(null);
-    setTimeout(() => {
-      // fake content
-      let content = '';
-      const nameBase = `report-${missionId}-${new Date().toISOString().slice(0,10)}`;
-      const fname = `${nameBase}.${format}`;
-      if (format === 'csv') {
-        content = ['id,class,confidence,lat,lon,status', ...filtered.map((a) => `${a.id},${a.class_name},${Math.round(a.confidence*100)},${a.latitude},${a.longitude},${a.status}`)].join('\n');
-      } else if (format === 'json') {
-        content = JSON.stringify(filtered, null, 2);
-      } else {
-        content = `Report for ${missionId}\nGenerated: ${new Date().toISOString()}\nItems: ${filtered.length}`;
+  // Build authoritative report data model
+  const reportModel: AnalysisReportModel = useMemo(() => {
+    return buildAnalysisReportModel(
+      visibleAnomalies,
+      rawAnomalies,
+      exportScope,
+      {
+        classFilter: selectedClassFilter,
+        confidenceThreshold,
+        searchQuery,
+      },
+      {
+        missionId,
+        datasetName: stagedFile ? stagedFile.name : mission?.name ? `${mission.name} Sonar Log` : 'Chagos Trench Survey Stream',
+        sonarType: stagedFile ? 'Side-Scan Sonar 900 kHz' : mission?.sonar_type || 'Side-scan 900 kHz',
+        lat: stagedFile ? stagedLatitude : mission?.latitude || -6.3000,
+        lon: stagedFile ? stagedLongitude : mission?.longitude || 71.2000,
       }
-      const blob = new Blob([content], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      setGenerated({ url, name: fname, format });
-      setGenerating(false);
-    }, 2000);
-  }
+    );
+  }, [
+    visibleAnomalies,
+    rawAnomalies,
+    exportScope,
+    selectedClassFilter,
+    confidenceThreshold,
+    searchQuery,
+    missionId,
+    stagedFile,
+    stagedLatitude,
+    stagedLongitude,
+    mission,
+  ]);
 
-  function handleDownloadGenerated() {
-    if (!generated) return;
-    const a = document.createElement('a');
-    a.href = generated.url;
-    a.download = generated.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
+  const handleExportJSON = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      exportReportJSON(reportModel);
+      setIsExporting(false);
+      setExportSuccessMessage(`Exported JSON report for ${reportModel.metadata.reportId}`);
+      showToast('JSON report download initiated successfully', 'success');
+    }, 400);
+  };
+
+  const handleExportCSV = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      exportReportCSV(reportModel);
+      setIsExporting(false);
+      setExportSuccessMessage(`Exported CSV report for ${reportModel.metadata.reportId}`);
+      showToast('CSV report download initiated successfully', 'success');
+    }, 400);
+  };
+
+  const handlePrintPDF = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      triggerReportPrint(reportModel);
+      setIsExporting(false);
+      showToast('Opened printable PDF report window', 'info');
+    }, 300);
+  };
 
   return (
-    <PageLayout title="Reports">
-      <div style={{ backgroundColor: COLOURS.background }} className="rounded-2xl border p-6">
-        <style>{`
-          .format-card { transition: transform .18s ease, border .18s ease, background .18s ease; cursor:pointer }
-          .format-card.selected { transform: scale(1.02); border: 2px solid ${COLOURS.ocean.light}; background: rgba(55,138,221,0.04); }
-          @keyframes waveSweep { 0% { background-position: -200px 0 } 100% { background-position: 200px 0 } }
-          .generate-wave { background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.04) 100%); background-size: 400px 100%; animation: waveSweep 1.6s linear infinite; }
-          .download-bounce { animation: bounceIn 400ms cubic-bezier(.2,.9,.3,1); }
-          @keyframes bounceIn { from { transform: translateY(12px); opacity:0 } to { transform: translateY(0); opacity:1 } }
-          .past-row { opacity:0; transform: translateY(8px); animation: fadeUp .4s forwards; }
-          @keyframes fadeUp { to { opacity:1; transform: translateY(0); } }
-        `}</style>
+    <PageLayout title="Survey Reports & Data Export Station" intensity="minimal">
 
-        <div className="flex gap-6">
-          <div style={{ flex: '0 0 55%' }}>
-            <h2 className="text-lg font-bold mb-3" style={{ color: COLOURS.textPrimary }}>Generate Report</h2>
-
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {(['csv','json','pdf'] as Format[]).map((f) => (
-                <div key={f} onClick={() => setFormat(f)} className={`format-card p-4 rounded-lg border`} style={{ borderColor: format === f ? COLOURS.ocean.light : 'rgba(255,255,255,0.04)', ...(format===f?{boxShadow:`0 0 12px ${COLOURS.ocean.light}22`}:{}), }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <File size={18} style={{ color: format === f ? COLOURS.ocean.light : COLOURS.seafloor.light }} />
-                    <div className="font-semibold" style={{ color: COLOURS.textPrimary }}>{f.toUpperCase()}</div>
-                  </div>
-                  <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>{f === 'csv' ? 'Spreadsheet compatible' : f === 'json' ? 'API/developer use' : 'Printable summary report'}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mb-4 p-4 rounded border" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-              <div className="mb-3 text-sm font-semibold" style={{ color: COLOURS.textPrimary }}>Filters</div>
-              <div className="mb-2">
-                <label className="mr-3"><input type="radio" name="include" checked={includeFilter==='confirmed'} onChange={() => setIncludeFilter('confirmed')} /> <span style={{ marginLeft:6 }}>Confirmed only</span></label>
-                <label className="mr-3"><input type="radio" name="include" checked={includeFilter==='all_reviewed'} onChange={() => setIncludeFilter('all_reviewed')} /> <span style={{ marginLeft:6 }}>All reviewed</span></label>
-                <label><input type="radio" name="include" checked={includeFilter==='all'} onChange={() => setIncludeFilter('all')} /> <span style={{ marginLeft:6 }}>All detections</span></label>
+      <div className="flex flex-col gap-6 font-mono">
+        {/* Header Telemetry Navigation Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-cyan-500/20 bg-[#050D1A]/90 p-4 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(ROUTES.sonarAnalysis)}
+              className="border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1.5" />
+              SONAR WORKSPACE
+            </Button>
+            <div>
+              <div className="flex items-center gap-2 text-[10px] text-cyan-400 font-semibold uppercase tracking-widest">
+                AUTOMATED SURVEY REPORT GENERATOR • SIH 2026 / NIOT-MoES
               </div>
-
-              <div className="mb-3 flex gap-2 items-center">
-                <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>From</div>
-                <input type="date" value={fromDate} onChange={(e)=>setFromDate(e.target.value)} className="px-2 py-1 rounded" style={{ background:'transparent', border:'1px solid rgba(255,255,255,0.04)', color: COLOURS.textPrimary }} />
-                <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>To</div>
-                <input type="date" value={toDate} onChange={(e)=>setToDate(e.target.value)} className="px-2 py-1 rounded" style={{ background:'transparent', border:'1px solid rgba(255,255,255,0.04)', color: COLOURS.textPrimary }} />
-              </div>
-
-              <div className="mb-3">
-                <div className="text-sm font-semibold mb-2" style={{ color: COLOURS.textPrimary }}>Anomaly Class</div>
-                <div className="flex gap-2 flex-wrap">
-                  {Object.keys(classMap).map((k) => (
-                    <label key={k} className="text-xs px-2 py-1 rounded" style={{ background: classFilters[k] ? 'rgba(255,255,255,0.02)' : 'transparent', color: COLOURS.textPrimary }}>
-                      <input type="checkbox" checked={classFilters[k]} onChange={() => toggleClassFilter(k)} style={{ marginRight: 6 }} /> {k}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <div className="text-sm font-semibold mb-2" style={{ color: COLOURS.textPrimary }}>Minimum Confidence: <span style={{ color: COLOURS.ocean.light }}>{minConfidence}%</span></div>
-                <input type="range" min={0} max={100} value={minConfidence} onChange={(e)=>setMinConfidence(Number(e.target.value))} />
-              </div>
-
-              <div>
-                {!generated ? (
-                  <button onClick={handleGenerate} disabled={generating} className="w-full px-4 py-3 rounded font-semibold" style={{ background: COLOURS.ocean.light, color: COLOURS.white }}>
-                    {generating ? <span className="generate-wave" style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 6 }}>Generating...</span> : 'Generate Report'}
-                  </button>
-                ) : (
-                  <button onClick={handleDownloadGenerated} className="w-full px-4 py-3 rounded font-semibold download-bounce" style={{ background: COLOURS.reef.base, color: COLOURS.white }}>
-                    <Download size={16} /> Download Report
-                  </button>
-                )}
-              </div>
+              <h2 className="text-lg font-bold text-white tracking-wide">
+                Side-Scan Sonar Anomaly Survey Report Station
+              </h2>
             </div>
           </div>
 
-          <div style={{ flex: '0 0 45%' }}>
-            <div className="rounded border p-4 mb-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h3 className="text-sm font-semibold" style={{ color: COLOURS.textPrimary }}>Report Preview</h3>
-                  <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>Summary of export</div>
-                </div>
-                <div className="text-xs" style={{ color: COLOURS.seafloor.light }}>{new Date().toLocaleString()}</div>
-              </div>
+          <div className="flex items-center gap-3">
+            <StatusIndicator status="complete" label="REPORT ENGINE READY" />
+          </div>
+        </div>
 
-              <div className="text-sm mb-2" style={{ color: COLOURS.seafloor.light }}>Mission: {missionId}</div>
-              <div className="text-sm mb-2" style={{ color: COLOURS.seafloor.light }}>Date range: {fromDate} → {toDate}</div>
-              <div className="text-sm mb-2" style={{ color: COLOURS.textPrimary }}>Total anomalies matching filters: {filtered.length}</div>
-
-              <table className="w-full text-left text-sm" style={{ color: COLOURS.seafloor.light }}>
-                <thead>
-                  <tr>
-                    <th className="pb-2">Class</th>
-                    <th className="pb-2">Count</th>
-                    <th className="pb-2">Avg Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {breakdown.map((b) => (
-                    <tr key={b.cls}>
-                      <td style={{ color: COLOURS.textPrimary }}>{b.cls.replace(/_/g,' ')}</td>
-                      <td>{b.count}</td>
-                      <td>{Math.round(b.avg*100)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Scope Selector Telemetry Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/20 bg-[#050D1A]/80 p-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-300 uppercase">EXPORT SCOPE:</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setExportScope('FULL_ANALYSIS')}
+                className={`rounded px-3 py-1.5 text-xs font-bold transition-all ${
+                  exportScope === 'FULL_ANALYSIS'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
+              >
+                FULL ANALYSIS EXPORT ({rawAnomalies.length} Contacts)
+              </button>
+              <button
+                onClick={() => setExportScope('FILTERED_VIEW')}
+                className={`rounded px-3 py-1.5 text-xs font-bold transition-all ${
+                  exportScope === 'FILTERED_VIEW'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(0,240,255,0.2)]'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
+              >
+                FILTERED VIEW EXPORT ({visibleAnomalies.length} Contacts)
+              </button>
             </div>
+          </div>
 
-            <div className="rounded border p-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-              <h3 className="text-sm font-semibold mb-3" style={{ color: COLOURS.textPrimary }}>Past Exports</h3>
-              <div className="space-y-2">
-                {pastExports.map((p, i) => (
-                  <div key={p.name} className="past-row" style={{ animationDelay: `${i*80}ms`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div>
-                      <div style={{ color: COLOURS.textPrimary }}>{p.name}</div>
-                      <div style={{ color: COLOURS.seafloor.light, fontSize:12 }}>{new Date(p.date).toLocaleString()} • {p.size}</div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrintPDF} className="border-cyan-500/40 text-cyan-300">
+              <Printer className="h-3.5 w-3.5 mr-1.5" />
+              PRINT / SAVE PDF
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExportCSV}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              DOWNLOAD CSV
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleExportJSON}>
+              <FileCode className="h-3.5 w-3.5 mr-1.5" />
+              DOWNLOAD JSON
+            </Button>
+          </div>
+        </div>
+
+        {/* Filter Notice Banner if Exporting Filtered View */}
+        {exportScope === 'FILTERED_VIEW' && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3.5 text-xs text-amber-300 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>FILTERED EXPORT ACTIVE:</strong> Export includes <strong className="text-white">{visibleAnomalies.length}</strong> of{' '}
+                <strong className="text-white">{rawAnomalies.length}</strong> total AI detections. Export metadata will record applied class filter ('{selectedClassFilter}') and threshold (≥ {confidenceThreshold}%).
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Executive Summary Cards Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="rounded-lg border border-cyan-500/20 bg-[#050D1A] p-4 text-center">
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Total AI Detections</span>
+            <span className="text-2xl font-bold text-cyan-400 mt-1 block">{reportModel.summary.totalDetections}</span>
+          </div>
+
+          <div className="rounded-lg border border-cyan-500/20 bg-[#050D1A] p-4 text-center">
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Exported Contacts</span>
+            <span className="text-2xl font-bold text-emerald-400 mt-1 block">{reportModel.summary.exportedDetections}</span>
+          </div>
+
+          <div className="rounded-lg border border-cyan-500/20 bg-[#050D1A] p-4 text-center">
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Geolocated Contacts</span>
+            <span className="text-2xl font-bold text-cyan-300 mt-1 block">{reportModel.summary.geolocatedCount}</span>
+          </div>
+
+          <div className="rounded-lg border border-cyan-500/20 bg-[#050D1A] p-4 text-center">
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Mean Confidence</span>
+            <span className="text-2xl font-bold text-cyan-300 mt-1 block">{reportModel.summary.avgConfidence}%</span>
+          </div>
+
+          <div className="rounded-lg border border-cyan-500/20 bg-[#050D1A] p-4 text-center">
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Highest Confidence</span>
+            <span className="text-2xl font-bold text-emerald-400 mt-1 block">{reportModel.summary.maxConfidence}%</span>
+          </div>
+        </div>
+
+        {/* Main Grid: Classification Breakdown & Anomaly Table */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Left Column: Detailed Anomaly Table (8 cols) */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            <Panel title={`SURVEY ANOMALY CONTACTS INDEX (${reportModel.anomalies.length})`}>
+              {reportModel.anomalies.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left font-mono text-xs text-slate-300">
+                    <thead>
+                      <tr className="border-b border-cyan-500/20 bg-slate-900/80 text-[11px] text-cyan-400 uppercase">
+                        <th className="p-3">ID</th>
+                        <th className="p-3">Class Label</th>
+                        <th className="p-3">Confidence</th>
+                        <th className="p-3">Latitude / Longitude</th>
+                        <th className="p-3">Depth</th>
+                        <th className="p-3">Priority</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {reportModel.anomalies.map((anom) => {
+                        const meta = getClassMetadata(anom.class_name);
+                        const confLabel = formatConfidenceLabel(anom.confidence);
+                        const geoStr = formatCoordinate(anom.latitude, anom.longitude, 4);
+
+                        return (
+                          <tr key={anom.id} className="hover:bg-cyan-950/20 transition-colors">
+                            <td className="p-3 font-bold text-white">{anom.id}</td>
+                            <td className="p-3">
+                              <span className="font-bold text-white flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                                {meta.label}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">{meta.categoryLabel}</span>
+                            </td>
+                            <td className="p-3 font-bold text-cyan-400">{confLabel}</td>
+                            <td className="p-3 font-mono text-slate-300 text-[11px]">{geoStr}</td>
+                            <td className="p-3">{anom.depth_m || 4180} m</td>
+                            <td className="p-3 uppercase font-bold text-cyan-300">{anom.priority}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  <CheckCircle2 className="h-8 w-8 mx-auto text-cyan-400 mb-2" />
+                  <span className="font-bold uppercase tracking-wider text-slate-300">
+                    NO ANOMALY CONTACTS IN REPORT SCOPE
+                  </span>
+                  <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
+                    The underlying survey dataset or selected export criteria contains zero detected anomaly contacts.
+                  </p>
+                </div>
+              )}
+            </Panel>
+          </div>
+
+          {/* Right Column: Metadata & Classification Breakdown (4 cols) */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            {/* Metadata Specifications Card */}
+            <Panel title="REPORT SPECIFICATIONS & METADATA">
+              <div className="space-y-2.5 font-mono text-xs text-slate-300 py-1">
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span className="text-slate-400">Report ID:</span>
+                  <span className="font-bold text-cyan-300">{reportModel.metadata.reportId}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span className="text-slate-400">Mission ID:</span>
+                  <span className="font-bold text-white">{reportModel.metadata.missionId}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span className="text-slate-400">Dataset Name:</span>
+                  <span className="font-semibold text-slate-200 truncate max-w-[160px]">{reportModel.metadata.datasetName}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span className="text-slate-400">Sensor Payload:</span>
+                  <span className="text-slate-300">{reportModel.metadata.sensorType}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-1.5">
+                  <span className="text-slate-400">AI CV Pipeline:</span>
+                  <span className="text-cyan-300 font-semibold">{reportModel.metadata.modelName} {reportModel.metadata.modelVersion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Generated:</span>
+                  <span className="text-slate-400 text-[11px]">{new Date(reportModel.metadata.reportGeneratedAt).toLocaleTimeString()}</span>
+                </div>
+              </div>
+            </Panel>
+
+            {/* Classification Breakdown Panel */}
+            <Panel title="CLASSIFICATION DISTRIBUTION SUMMARY">
+              <div className="space-y-2.5 font-mono text-xs">
+                {reportModel.classBreakdown.map((item) => (
+                  <div key={item.classKey} className="space-y-1">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-white font-semibold flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                        {item.label}
+                      </span>
+                      <span className="text-cyan-300 font-bold">
+                        {item.count} ({item.percentage}%)
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div style={{ padding:'4px 8px', borderRadius:999, background: p.format==='csv' ? 'rgba(55,138,221,0.15)' : p.format==='json' ? 'rgba(127,119,221,0.15)' : 'rgba(163,45,45,0.15)', color: p.format==='csv' ? COLOURS.ocean.light : p.format==='json' ? COLOURS.bio.light : COLOURS.hazard.base }}>{p.format.toUpperCase()}</div>
-                      <button style={{ background:'transparent', border:'none', color: COLOURS.ocean.light }}><Download size={16} /></button>
+                    <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
           </div>
         </div>
       </div>

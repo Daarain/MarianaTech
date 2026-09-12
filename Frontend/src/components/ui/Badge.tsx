@@ -1,5 +1,5 @@
 import { formatPriority } from '@/utils/formatters';
-import type { Priority } from '@/api/mockData';
+import type { Priority } from '@/types/api';
 
 const PRIORITY_COLOURS: Record<Priority, { bg: string; dot: string; border: string }> = {
   critical: { bg: 'rgba(163, 45, 45, 0.15)', dot: '#A32D2D', border: '#A32D2D' },

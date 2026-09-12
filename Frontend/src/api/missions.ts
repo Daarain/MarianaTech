@@ -1,57 +1,22 @@
-import { mockMissions, mockDashboardStats, type Mission, type DashboardStats } from './mockData';
-import { BASE_URL } from '@/constants/config';
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+import { apiFetch } from './client';
+import type { Mission, DashboardStats, CreateMissionPayload } from '@/types/api';
+export type { CreateMissionPayload };
 
 export async function getMissions(): Promise<Mission[]> {
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/missions`);
-    return res.json();
-  }
-  await delay(300);
-  return mockMissions;
+  return await apiFetch<Mission[]>('/missions');
 }
 
 export async function getMissionById(id: string): Promise<Mission | null> {
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/missions/${id}`);
-    return res.json();
-  }
-  await delay(200);
-  return mockMissions.find((m) => m.id === id) ?? null;
-}
-
-export interface CreateMissionPayload {
-  missionName: string;
-  date: string;
-  vessel: string;
-  location: string;
-  depthMin: number;
-  depthMax: number;
-  sonarType: string;
-  notes: string;
-  operatorName: string;
-  files: { name: string; size: number }[];
+  return await apiFetch<Mission>(`/missions/${id}`);
 }
 
 export async function createMission(data: CreateMissionPayload): Promise<{ id: string }> {
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/missions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  }
-  await delay(1500);
-  return { id: 'fake-id-001' };
+  return await apiFetch<{ id: string }>('/missions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/missions/stats`);
-    return res.json();
-  }
-  await delay(250);
-  return mockDashboardStats;
+  return await apiFetch<DashboardStats>('/missions/stats');
 }

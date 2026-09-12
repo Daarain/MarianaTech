@@ -1,34 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getMissions, getMissionById, getDashboardStats } from '@/api/missions';
-import { type Mission, type DashboardStats } from '@/api/mockData';
+import type { Mission, DashboardStats } from '@/types/api';
 
 export function useMissions() {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const fetchMissionsData = useCallback(async () => {
     setLoading(true);
-    getMissions()
-      .then((data) => {
-        if (active) {
-          setMissions(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (active) setError('Failed to load missions');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    setError(null);
+    try {
+      const data = await getMissions();
+      setMissions(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load survey missions');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { missions, loading, error };
+  useEffect(() => {
+    fetchMissionsData();
+  }, [fetchMissionsData]);
+
+  return { missions, loading, error, refetch: fetchMissionsData };
 }
 
 export function useMission(id: string | undefined) {
@@ -36,32 +32,28 @@ export function useMission(id: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchMission = useCallback(async () => {
     if (!id) {
       setLoading(false);
       return;
     }
-    let active = true;
     setLoading(true);
-    getMissionById(id)
-      .then((data) => {
-        if (active) {
-          setMission(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (active) setError('Failed to load mission');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    setError(null);
+    try {
+      const data = await getMissionById(id);
+      setMission(data);
+    } catch (err: any) {
+      setError(err?.message || `Failed to load mission ${id}`);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  return { mission, loading, error };
+  useEffect(() => {
+    fetchMission();
+  }, [fetchMission]);
+
+  return { mission, loading, error, refetch: fetchMission };
 }
 
 export function useDashboardStats() {
@@ -69,26 +61,22 @@ export function useDashboardStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const fetchStats = useCallback(async () => {
     setLoading(true);
-    getDashboardStats()
-      .then((data) => {
-        if (active) {
-          setStats(data);
-          setError(null);
-        }
-      })
-      .catch(() => {
-        if (active) setError('Failed to load stats');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    setError(null);
+    try {
+      const data = await getDashboardStats();
+      setStats(data);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load mission statistics');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { stats, loading, error };
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  return { stats, loading, error, refetch: fetchStats };
 }

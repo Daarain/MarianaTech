@@ -8,7 +8,7 @@ import Badge from '@/components/ui/Badge';
 import { COLOURS } from '@/constants/colours';
 import { getAnomalies, verifyAnomaly, rejectAnomaly } from '@/api/anomalies';
 import { useMissionContext } from '@/context/MissionContext';
-import type { Anomaly } from '@/api/mockData';
+import type { Anomaly } from '@/types/api';
 
 const CLASS_EMOJI: Record<string, string> = {
   unidentified_object: '👻',

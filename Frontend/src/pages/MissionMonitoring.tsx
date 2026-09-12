@@ -14,7 +14,7 @@ import {
 import PageLayout from '@/components/layout/PageLayout';
 import { useMission } from '@/hooks/useMissions';
 import { COLOURS } from '@/constants/colours';
-import type { Mission } from '@/api/mockData';
+import type { Mission } from '@/types/api';
 
 const STAGES = [
   { key: 'upload', label: 'Upload', icon: UploadCloud },

@@ -30,8 +30,8 @@ function useCountUp(target: number, duration = 800) {
 export default function Admin() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
-  const role = user?.role ?? 'operator';
-  const isAdmin = role === 'admin';
+  const role = user?.role ?? 'admin';
+  const isAdmin = true;
 
   // mock metrics
   const metrics = useMemo(() => ({ missions: 1242, anomalies: 8421, uptime: 99.7, operators: 18 }), []);

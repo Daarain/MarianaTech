@@ -1,4 +1,4 @@
-import type { MissionStatus } from '@/api/mockData';
+import type { MissionStatus } from '@/types/api';
 
 const STATUS_COLOURS: Record<MissionStatus, { bg: string; dot: string }> = {
   processing: { bg: '#534AB7', dot: '#7F77DD' },

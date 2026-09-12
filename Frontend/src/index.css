@@ -4,125 +4,155 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: dark;
   }
   body {
-    background-color: #0a1628;
+    background-color: #030712;
     color: #f1efe8;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 }
 
+/* Scrollbar Styling */
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(3, 7, 18, 0.6);
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(55, 138, 221, 0.3);
+    background: rgba(0, 240, 255, 0.25);
     border-radius: 3px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(55, 138, 221, 0.5);
+    background: rgba(0, 240, 255, 0.5);
   }
 }
 
-/* ====== Upload page animations ====== */
+/* Deep Ocean Glass Panels */
+.sonar-panel {
+  background: rgba(6, 18, 36, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(0, 8, 20, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
 
-/* Bubble particles floating upward */
-@keyframes bubbleRise {
+.sonar-panel-elevated {
+  background: rgba(10, 28, 52, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.12), 0 12px 40px rgba(0, 5, 15, 0.8), inset 0 1px 0 0 rgba(0, 240, 255, 0.1);
+}
+
+.sonar-panel-warning {
+  background: rgba(28, 12, 18, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 59, 48, 0.35);
+  box-shadow: 0 0 20px rgba(255, 59, 48, 0.15);
+}
+
+.sonar-panel-analysis {
+  background: rgba(3, 22, 38, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.12);
+}
+
+/* Particle rise animation */
+@keyframes particleRise {
   0% {
     transform: translateY(0) translateX(0);
     opacity: 0;
   }
-  10% {
-    opacity: 0.6;
+  15% {
+    opacity: 0.5;
   }
-  90% {
-    opacity: 0.4;
+  85% {
+    opacity: 0.3;
   }
   100% {
-    transform: translateY(-160px) translateX(var(--drift, 10px));
+    transform: translateY(-240px) translateX(var(--drift, 15px));
     opacity: 0;
   }
 }
 
-/* Drop zone ripple on file drop */
-@keyframes dropRipple {
-  0% {
-    transform: scale(0);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
-  }
+.animate-particle {
+  animation: particleRise var(--duration, 8s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
 }
 
-/* File row slide-in from left */
-@keyframes fileSlideIn {
-  0% {
-    transform: translateX(-24px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Progress bar shimmer wave */
-@keyframes progressShimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(200%);
-  }
-}
-
-/* Start Mission button wave sweep */
-@keyframes buttonWave {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(200%);
-  }
-}
-
-/* Sonar ping dots for loading state */
-@keyframes sonarDot {
-  0%, 80%, 100% {
-    transform: scale(0.6);
-    opacity: 0.4;
-  }
-  40% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-/* Drag-over spinning border */
-@keyframes borderSpin {
-  from {
-    background-position: 0% 50%;
-  }
-  to {
-    background-position: 200% 50%;
-  }
-}
-
-/* Form field focus glow */
-@keyframes focusGlow {
+/* Subsea Light Caustics Ray Animation */
+@keyframes causticsPulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(83, 74, 183, 0);
+    opacity: 0.2;
+    transform: scale(1) rotate(0deg);
   }
   50% {
-    box-shadow: 0 0 0 3px rgba(83, 74, 183, 0.25);
+    opacity: 0.45;
+    transform: scale(1.08) rotate(1.5deg);
+  }
+}
+
+.animate-caustics {
+  animation: causticsPulse 12s ease-in-out infinite;
+}
+
+/* Page Fade-In Transition */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-fade-in {
+  animation: fadeIn 0.35s ease-out forwards;
+}
+
+/* Subsea Glow Utility Tokens */
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+}
+
+.glow-cyan-sm {
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+}
+
+.glow-amber {
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.3);
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #ffffff 0%, #00F0FF 50%, #00A8FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Accessibility / Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-particle,
+  .animate-caustics {
+    display: none !important;
   }
 }

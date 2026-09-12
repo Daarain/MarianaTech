@@ -4,9 +4,22 @@ export default {
   theme: {
     extend: {
       colors: {
+        sonar: {
+          bg: '#030712',
+          surface: '#071120',
+          panel: 'rgba(10, 25, 47, 0.75)',
+          border: 'rgba(0, 240, 255, 0.2)',
+          'border-strong': 'rgba(0, 240, 255, 0.45)',
+          cyan: '#00F0FF',
+          aqua: '#00D2E6',
+          green: '#00FF9D',
+          dark: '#050D1A',
+        },
         ocean: {
-          DEFAULT: '#0C447C',
-          light: '#378ADD',
+          DEFAULT: '#0A192F',
+          deep: '#030814',
+          medium: '#0F2744',
+          light: '#00F0FF',
           tint: '#E6F1FB',
         },
         reef: {
@@ -20,19 +33,26 @@ export default {
           tint: '#EEEDFE',
         },
         hazard: {
-          DEFAULT: '#A32D2D',
-          light: '#E24B4A',
+          DEFAULT: '#FF3B30',
+          light: '#FF6B63',
           tint: '#FCEBEB',
         },
         seafloor: {
-          DEFAULT: '#444441',
-          light: '#888780',
+          DEFAULT: '#1E293B',
+          light: '#64748B',
           tint: '#F1EFE8',
         },
-        abyss: '#0A1628',
+        abyss: '#030712',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+      },
+      boxShadow: {
+        'sonar-cyan': '0 0 20px rgba(0, 240, 255, 0.25)',
+        'sonar-green': '0 0 20px rgba(0, 255, 157, 0.25)',
+        'sonar-red': '0 0 20px rgba(255, 59, 48, 0.25)',
+        'panel-glow': '0 8px 32px 0 rgba(0, 10, 25, 0.5)',
       },
       keyframes: {
         waveMove: {
@@ -48,16 +68,20 @@ export default {
           '100%': { width: 'var(--fill-width)' },
         },
         bioPulse: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(226, 75, 74, 0.4)' },
-          '50%': { boxShadow: '0 0 0 6px rgba(226, 75, 74, 0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(255, 59, 48, 0.4)' },
+          '50%': { boxShadow: '0 0 0 8px rgba(255, 59, 48, 0)' },
         },
         sonarPing: {
-          '0%': { transform: 'scale(1)', opacity: '0.6' },
-          '100%': { transform: 'scale(2.4)', opacity: '0' },
+          '0%': { transform: 'scale(1)', opacity: '0.8' },
+          '100%': { transform: 'scale(2.8)', opacity: '0' },
         },
-        rowSlide: {
-          '0%': { width: '0%' },
-          '100%': { width: '3px' },
+        scanSweep: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        beamPass: {
+          '0%': { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(1000%)' },
         },
       },
       animation: {
@@ -65,7 +89,9 @@ export default {
         fadeUp: 'fadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards',
         fillBar: 'fillBar 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards',
         bioPulse: 'bioPulse 2s ease-in-out infinite',
-        sonarPing: 'sonarPing 2s ease-out infinite',
+        sonarPing: 'sonarPing 2.4s cubic-bezier(0.1, 0.7, 0.1, 1) infinite',
+        scanSweep: 'scanSweep 6s linear infinite',
+        beamPass: 'beamPass 3.5s ease-in-out infinite',
       },
     },
   },
