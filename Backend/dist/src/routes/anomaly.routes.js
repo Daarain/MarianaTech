@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const anomaly_controller_1 = require("../controllers/anomaly.controller");
+const rateLimit_middleware_1 = require("../middleware/rateLimit.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticateJWT);
+router.get('/near', anomaly_controller_1.getAnomaliesNearHandler);
+router.get('/within', anomaly_controller_1.getAnomaliesWithinHandler);
+router.get('/:anomalyId/history', anomaly_controller_1.getAnomalyHistoryHandler);
+router.post('/:anomalyId/verify', rateLimit_middleware_1.writeLimiter, anomaly_controller_1.verifyAnomalyHandler);
+router.post('/:anomalyId/reject', rateLimit_middleware_1.writeLimiter, anomaly_controller_1.rejectAnomalyHandler);
+router.get('/:anomalyId', anomaly_controller_1.getAnomalyByIdHandler);
+exports.default = router;
