@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const processing_controller_1 = require("../controllers/processing.controller");
+const rateLimit_middleware_1 = require("../middleware/rateLimit.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticateJWT);
+router.get('/:jobId', processing_controller_1.getJobDetailsHandler);
+router.post('/:jobId/retry', rateLimit_middleware_1.writeLimiter, processing_controller_1.retryJobHandler);
+exports.default = router;
