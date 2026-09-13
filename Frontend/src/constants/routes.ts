@@ -1,0 +1,31 @@
+export const ROUTES = {
+  landing: '/',
+  dashboard: '/dashboard',
+  sonarAnalysis: '/sonar-analysis',
+  missionNew: '/missions/new',
+  missionStatus: '/missions/:id/status',
+  missionViewer: '/missions/:id/viewer',
+  missionMap: '/missions/:id/map',
+  missionAnomalies: '/missions/:id/anomalies',
+  missionReports: '/missions/:id/reports',
+  history: '/history',
+  models: '/models',
+  admin: '/admin',
+  designSystem: '/design-system',
+} as const;
+
+export const ROUTE_LABELS: Record<string, string> = {
+  '/': 'Home',
+  '/dashboard': 'Mission Control',
+  '/sonar-analysis': 'Sonar Analysis',
+  '/missions/new': 'Sonar Data Upload',
+  '/missions/:id/status': 'Survey Monitoring',
+  '/missions/:id/viewer': 'Sonar Viewer',
+  '/missions/:id/map': 'Anomaly Map',
+  '/missions/:id/anomalies': 'Detections',
+  '/missions/:id/reports': 'Reports',
+  '/history': 'Analysis History',
+  '/models': 'Model Center',
+  '/admin': 'Admin & System',
+  '/design-system': 'Design System',
+};
