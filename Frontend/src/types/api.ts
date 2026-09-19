@@ -7,7 +7,7 @@ export interface ApiError {
 export interface ApiResponse<T> {
   success: boolean;
   data: T | null;
-  error: ApiError | null;
+  error: ApiError | string | null;
 }
 
 export type MissionStatus = 'processing' | 'complete' | 'failed' | 'pending';

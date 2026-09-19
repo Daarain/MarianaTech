@@ -242,15 +242,15 @@ export function triggerReportPrint(reportModel: AnalysisReportModel): void {
         <title>MARIANATECH Survey Report - ${meta.reportId}</title>
         <style>
           body { font-family: monospace, sans-serif; background: #ffffff; color: #0f172a; margin: 0; padding: 24px; font-size: 11px; }
-          .header { border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-          .title { font-size: 18px; font-weight: bold; color: #0369a1; text-transform: uppercase; margin: 0; }
+          .header { border-bottom: 2px solid #D97732; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .title { font-size: 18px; font-weight: bold; color: #D97732; text-transform: uppercase; margin: 0; }
           .subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
-          .badge { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+          .badge { background: #242930; color: #E8E5DF; border: 1px solid #B9C0C8; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
           .section { margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; }
-          .section-title { font-size: 12px; font-weight: bold; color: #0284c7; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px; }
+          .section-title { font-size: 12px; font-weight: bold; color: #D97732; text-transform: uppercase; border-bottom: 1px solid #B9C0C8; padding-bottom: 6px; margin-bottom: 10px; }
           .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 10px; }
           .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 4px; text-align: center; }
-          .stat-val { font-size: 16px; font-weight: bold; color: #0369a1; }
+          .stat-val { font-size: 16px; font-weight: bold; color: #D97732; }
           .stat-lbl { font-size: 9px; color: #64748b; text-transform: uppercase; }
           table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10px; }
           th { background: #f1f5f9; text-align: left; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; color: #334155; font-weight: bold; text-transform: uppercase; }

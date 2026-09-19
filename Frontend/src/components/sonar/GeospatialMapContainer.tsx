@@ -35,6 +35,8 @@ interface GeospatialMapContainerProps {
   originLat?: number;
   originLon?: number;
   height?: string;
+  hideHeader?: boolean;
+  hideList?: boolean;
 }
 
 export default function GeospatialMapContainer({
@@ -46,6 +48,8 @@ export default function GeospatialMapContainer({
   originLat = -6.3000,
   originLon = 71.2000,
   height = '520px',
+  hideHeader = false,
+  hideList = false,
 }: GeospatialMapContainerProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
@@ -287,57 +291,59 @@ export default function GeospatialMapContainer({
   return (
     <div className="flex flex-col gap-3 font-mono">
       {/* Map Control Telemetry Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/20 bg-[#050D1A]/90 p-3 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-            <Globe className="h-4 w-4 animate-pulse" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-white tracking-wider flex items-center gap-2">
-              GEOSPATIAL ANOMALY MAP
-              <span className="rounded bg-cyan-950 px-2 py-0.5 text-[10px] text-cyan-400 border border-cyan-500/30">
-                WGS 84 / LAT-LON
-              </span>
+      {!hideHeader && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/20 bg-[#050D1A]/90 p-3 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <Globe className="h-4 w-4 animate-pulse" />
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              {partition.hasGeolocatedPoints ? (
-                <span>
-                  Showing <strong className="text-cyan-300">{partition.geolocatedCount}</strong> of{' '}
-                  <strong className="text-slate-200">{partition.totalCount}</strong> contacts with valid GPS coordinates
+            <div>
+              <div className="text-xs font-bold text-white tracking-wider flex items-center gap-2">
+                GEOSPATIAL ANOMALY MAP
+                <span className="rounded bg-cyan-950 px-2 py-0.5 text-[10px] text-cyan-400 border border-cyan-500/30">
+                  WGS 84 / LAT-LON
                 </span>
-              ) : (
-                <span className="text-amber-400 font-semibold">GEOLOCATION DATA UNAVAILABLE</span>
-              )}
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                {partition.hasGeolocatedPoints ? (
+                  <span>
+                    Showing <strong className="text-cyan-300">{partition.geolocatedCount}</strong> of{' '}
+                    <strong className="text-slate-200">{partition.totalCount}</strong> contacts with valid GPS coordinates
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-semibold">GEOLOCATION DATA UNAVAILABLE</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {partition.hasGeolocatedPoints && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTrack(!showTrack)}
-                className={`text-[11px] ${showTrack ? 'border-cyan-500/40 text-cyan-300' : 'text-slate-400'}`}
-              >
-                <Compass className="h-3 w-3 mr-1 inline" />
-                {showTrack ? 'HIDE TRACK' : 'SHOW TRACK'}
-              </Button>
+          <div className="flex items-center gap-2">
+            {partition.hasGeolocatedPoints && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTrack(!showTrack)}
+                  className={`text-[11px] ${showTrack ? 'border-cyan-500/40 text-cyan-300' : 'text-slate-400'}`}
+                >
+                  <Compass className="h-3 w-3 mr-1 inline" />
+                  {showTrack ? 'HIDE TRACK' : 'SHOW TRACK'}
+                </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFitAll}
-                className="text-[11px] border-cyan-500/40 text-cyan-300"
-              >
-                <Maximize2 className="h-3 w-3 mr-1 inline" />
-                FIT ALL MARKERS
-              </Button>
-            </>
-          )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFitAll}
+                  className="text-[11px] border-cyan-500/40 text-cyan-300"
+                >
+                  <Maximize2 className="h-3 w-3 mr-1 inline" />
+                  FIT ALL MARKERS
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Leaflet Map Viewport Frame */}
       <div
@@ -374,20 +380,26 @@ export default function GeospatialMapContainer({
 
         {/* Geolocation Unavailable State */}
         {!partition.hasGeolocatedPoints && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#061527]/95 p-8 text-center backdrop-blur-sm">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-3">
-              <Compass className="h-7 w-7" />
+          hideHeader ? (
+            <div className="absolute top-2 left-2 z-[1000] rounded border border-amber-500/30 bg-[#121518]/90 px-2.5 py-1 text-[9px] font-mono text-amber-300 backdrop-blur-sm shadow">
+              GPS FIX: DEFAULT SURVEY ZONE · CONTACT COORDINATES PENDING
             </div>
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-              GEOLOCATION UNAVAILABLE
-            </h4>
-            <p className="text-xs text-slate-400 mt-1.5 max-w-md">
-              Geographic coordinates are not available for this sonar dataset. The AI detection and classification pipeline remains fully operational.
-            </p>
-            <div className="mt-4 rounded border border-amber-500/20 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-300">
-              Total Detections: {partition.totalCount} • Unlocated Contacts: {partition.unlocatedCount}
+          ) : (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#061527]/95 p-8 text-center backdrop-blur-sm">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-3">
+                <Compass className="h-7 w-7" />
+              </div>
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                GEOLOCATION UNAVAILABLE
+              </h4>
+              <p className="text-xs text-slate-400 mt-1.5 max-w-md">
+                Geographic coordinates are not available for this sonar dataset. The AI detection and classification pipeline remains fully operational.
+              </p>
+              <div className="mt-4 rounded border border-amber-500/20 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-300">
+                Total Detections: {partition.totalCount} • Unlocated Contacts: {partition.unlocatedCount}
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Leaflet Mount Element */}
@@ -420,18 +432,19 @@ export default function GeospatialMapContainer({
       </div>
 
       {/* Partition & Accessibility Summary List */}
-      <div className="rounded-lg border border-cyan-500/15 bg-[#050D1A]/80 p-3 text-xs">
-        <div className="flex items-center justify-between text-slate-300 mb-2">
-          <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-cyan-400" />
-            GEOLOCATED ANOMALY CONTACTS LIST ({partition.geolocatedCount})
-          </span>
-          {rawPartition.unlocatedCount > 0 && (
-            <span className="text-[11px] text-amber-400">
-              ({rawPartition.unlocatedCount} contacts location unavailable)
+      {!hideList && (
+        <div className="rounded-lg border border-cyan-500/15 bg-[#050D1A]/80 p-3 text-xs">
+          <div className="flex items-center justify-between text-slate-300 mb-2">
+            <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-cyan-400" />
+              GEOLOCATED ANOMALY CONTACTS LIST ({partition.geolocatedCount})
             </span>
-          )}
-        </div>
+            {rawPartition.unlocatedCount > 0 && (
+              <span className="text-[11px] text-amber-400">
+                ({rawPartition.unlocatedCount} contacts location unavailable)
+              </span>
+            )}
+          </div>
 
         {partition.hasGeolocatedPoints ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -471,6 +484,7 @@ export default function GeospatialMapContainer({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -17,6 +17,8 @@ export interface RegisterResponse {
     email?: string;
     role: UserRole;
   };
+  role: UserRole;
+  token: string;
 }
 
 export interface RegisterUserInput {
@@ -104,7 +106,8 @@ export async function registerUser({
   const normalizedEmail = email ? email.trim().toLowerCase() : '';
   const providedUsername = username ? username.trim().toLowerCase() : '';
   const passwordValue = password ?? '';
-  const requestedRole = role === 'admin' ? 'admin' : 'operator';
+  // Public signup strictly creates 'operator' accounts. Admin role requires verified licenseImage via admin registration portal.
+  const requestedRole = (role === 'admin' && Boolean(licenseImage)) ? 'admin' : 'operator';
 
   if (!safeName || !passwordValue) {
     throw new Error('Name and password are required');
@@ -167,6 +170,19 @@ export async function registerUser({
       : {}),
   });
 
+  const payload = {
+    id: user._id.toString(),
+    username: user.username,
+    name: user.name,
+    role: user.role,
+  };
+
+  const options: SignOptions = {
+    expiresIn: config.jwtExpiresIn as SignOptions['expiresIn'],
+  };
+
+  const token = jwt.sign(payload, config.jwtSecret, options);
+
   return {
     message: 'User registered successfully',
     user: {
@@ -175,6 +191,8 @@ export async function registerUser({
       email: user.email || undefined,
       role: user.role,
     },
+    role: user.role,
+    token,
   };
 }
 

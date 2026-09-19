@@ -31,20 +31,20 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       className={`sonar-panel relative flex flex-col justify-between rounded-lg p-4 transition-all duration-200 hover:border-cyan-400/50 ${borderMap[variant]} ${className}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        <span className="font-sans text-xs font-semibold uppercase tracking-wider text-slate-400">
           {title}
         </span>
         {icon && <span className="text-slate-400">{icon}</span>}
       </div>
 
       <div className="my-2 flex items-baseline justify-between gap-2">
-        <span className="font-mono text-2xl font-bold tracking-tight text-white">{value}</span>
+        <span className="font-sans text-2xl font-bold tracking-tight text-white">{value}</span>
         {trend && (
           <span className="font-mono text-xs font-semibold text-emerald-400">{trend}</span>
         )}
       </div>
 
-      {subtitle && <span className="font-mono text-[10px] text-slate-400">{subtitle}</span>}
+      {subtitle && <span className="font-sans text-xs text-slate-400">{subtitle}</span>}
     </div>
   );
 };

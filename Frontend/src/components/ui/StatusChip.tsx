@@ -1,10 +1,10 @@
 import type { MissionStatus } from '@/types/api';
 
 const STATUS_COLOURS: Record<MissionStatus, { bg: string; dot: string }> = {
-  processing: { bg: '#534AB7', dot: '#7F77DD' },
-  complete: { bg: '#0F6E56', dot: '#1D9E75' },
-  failed: { bg: '#A32D2D', dot: '#E24B4A' },
-  pending: { bg: '#888780', dot: '#AAAAA0' },
+  processing: { bg: '#D97732', dot: '#E8E5DF' },
+  complete: { bg: '#242930', dot: '#B9C0C8' },
+  failed: { bg: '#B94A48', dot: '#E8E5DF' },
+  pending: { bg: '#59616B', dot: '#B9C0C8' },
 };
 
 interface StatusChipProps {

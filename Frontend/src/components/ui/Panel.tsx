@@ -23,7 +23,7 @@ export const Panel: React.FC<PanelProps> = ({
     elevated: 'sonar-panel-elevated',
     analysis: 'sonar-panel-analysis',
     warning: 'sonar-panel-warning',
-    result: 'sonar-panel-elevated border-cyan-400/40',
+    result: 'sonar-panel-elevated border-orange-500/40',
   };
 
   return (
@@ -32,10 +32,10 @@ export const Panel: React.FC<PanelProps> = ({
       {...props}
     >
       {headerTitle && (
-        <div className="mb-4 flex items-center justify-between border-b border-cyan-500/20 pb-3">
+        <div className="mb-4 flex items-center justify-between border-b border-[#B9C0C8]/20 pb-3">
           <div className="flex items-center gap-2">
-            {headerIcon && <span className="text-cyan-400">{headerIcon}</span>}
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-100">
+            {headerIcon && <span className="text-orange-400">{headerIcon}</span>}
+            <h3 className="font-sans text-xs font-semibold uppercase tracking-wider text-slate-100">
               {headerTitle}
             </h3>
           </div>

@@ -57,7 +57,7 @@ describe('Authentication API Endpoint Tests', () => {
   it('POST /auth/register should create a user with a hashed password and allow login', async () => {
     registeredUsername = `newoperator_${Date.now()}`;
     const res = await request(app)
-      .post('/auth/register')
+      .post('/api/v1/auth/signup')
       .send({ name: 'New Operator', username: registeredUsername, password: 'newpass123' });
 
     expect(res.status).toBe(201);
@@ -65,6 +65,9 @@ describe('Authentication API Endpoint Tests', () => {
     expect(res.body).toHaveProperty('user');
     expect(res.body.user).toHaveProperty('username', registeredUsername);
     expect(res.body.user).toHaveProperty('role', 'operator');
+    expect(res.body).toHaveProperty('role', 'operator');
+    expect(res.body).toHaveProperty('token');
+    expect(typeof res.body.token).toBe('string');
 
     const registeredUser = await User.findOne({ username: registeredUsername });
     expect(registeredUser).not.toBeNull();

@@ -3,16 +3,37 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --font-ui: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --color-bg: #101214;
+    --color-surface: #181B1F;
+    --color-panel: #242930;
+    --color-text-primary: #E8E5DF;
+    --color-text-secondary: #B9C0C8;
+    --color-accent: #D97732;
+    --color-critical: #B94A48;
+    --color-border: rgba(185, 192, 200, 0.24);
+    --color-focus: #D97732;
+  }
+
   html {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: var(--font-ui);
     color-scheme: dark;
+    height: 100%;
   }
   body {
-    background-color: #030712;
-    color: #f1efe8;
+    font-family: var(--font-ui);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    height: 100%;
+  }
+  #root {
+    height: 100%;
   }
 }
 
@@ -23,46 +44,40 @@
     height: 6px;
   }
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: rgba(3, 7, 18, 0.6);
+    background: var(--color-surface);
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(0, 240, 255, 0.25);
+    background: rgba(185, 192, 200, 0.35);
     border-radius: 3px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 240, 255, 0.5);
+    background: var(--color-accent);
   }
 }
 
-/* Deep Ocean Glass Panels */
+/* Shared application surfaces */
 .sonar-panel {
-  background: rgba(6, 18, 36, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 240, 255, 0.18);
-  box-shadow: 0 8px 32px 0 rgba(0, 8, 20, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .sonar-panel-elevated {
-  background: rgba(10, 28, 52, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  box-shadow: 0 0 24px rgba(0, 240, 255, 0.12), 0 12px 40px rgba(0, 5, 15, 0.8), inset 0 1px 0 0 rgba(0, 240, 255, 0.1);
+  background: var(--color-panel);
+  border: 1px solid rgba(217, 119, 50, 0.38);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
 }
 
 .sonar-panel-warning {
-  background: rgba(28, 12, 18, 0.85);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 59, 48, 0.35);
-  box-shadow: 0 0 20px rgba(255, 59, 48, 0.15);
+  background: #2A2422;
+  border: 1px solid rgba(217, 119, 50, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .sonar-panel-analysis {
-  background: rgba(3, 22, 38, 0.88);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(0, 255, 157, 0.3);
-  box-shadow: 0 0 20px rgba(0, 255, 157, 0.12);
+  background: var(--color-panel);
+  border: 1px solid rgba(185, 192, 200, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 /* Particle rise animation */
@@ -120,27 +135,46 @@
   animation: fadeIn 0.35s ease-out forwards;
 }
 
-/* Subsea Glow Utility Tokens */
+/* Compatibility utility names retained for existing components. */
 .glow-cyan {
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
 }
 
 .glow-cyan-sm {
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
 }
 
 .glow-emerald {
-  box-shadow: 0 0 18px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
 }
 
 .glow-amber {
-  box-shadow: 0 0 18px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
 }
 
 .text-gradient-cyan {
-  background: linear-gradient(135deg, #ffffff 0%, #00F0FF 50%, #00A8FF 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--color-text-primary);
+}
+
+/* Retheme legacy arbitrary utilities while the existing component markup remains stable. */
+[class~="bg-[#030712]"],
+[class~="bg-[#030712]/95"] {
+  background-color: var(--color-bg) !important;
+}
+
+[class*="bg-[#050D1A]"],
+[class*="bg-[#051326]"],
+[class*="bg-[#0A1628]"],
+[class*="bg-[#040d1a]"],
+[class*="bg-[#030a16]"],
+[class*="bg-[#041022]"] {
+  background-color: var(--color-surface) !important;
+}
+
+[class*="shadow-[0_0"],
+[class*="shadow-[0_10px_30px_rgba(0,240,255"],
+[class*="shadow-[0_20px_50px_rgba(0,240,255"] {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
 }
 
 /* Accessibility / Reduced Motion */

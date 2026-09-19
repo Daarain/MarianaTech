@@ -19,19 +19,19 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    'relative inline-flex items-center justify-center font-mono font-semibold tracking-wider transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none rounded';
+    'relative inline-flex items-center justify-center font-sans font-semibold tracking-wide transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none rounded';
 
   const variantClasses = {
     primary:
-      'bg-cyan-500 text-black hover:bg-cyan-400 active:bg-cyan-600 shadow-[0_0_16px_rgba(0,240,255,0.35)] border border-cyan-300',
+      'bg-orange-500 text-[#101214] hover:bg-orange-400 active:bg-orange-600 border border-orange-400 focus:ring-2 focus:ring-orange-500/40',
     secondary:
-      'bg-cyan-950/60 text-cyan-300 hover:bg-cyan-900/80 hover:text-cyan-200 border border-cyan-500/40 shadow-sm',
+      'bg-[#242930] text-[#E8E5DF] hover:bg-[#2D333B] border border-[#B9C0C8]/40',
     outline:
-      'bg-transparent text-slate-300 border border-slate-700 hover:border-cyan-500/50 hover:text-cyan-400',
+      'bg-transparent text-[#B9C0C8] border border-[#B9C0C8]/40 hover:border-orange-500/60 hover:text-orange-400',
     hazard:
-      'bg-rose-600 text-white hover:bg-rose-500 active:bg-rose-700 shadow-[0_0_16px_rgba(255,59,48,0.35)] border border-rose-400',
+      'bg-[#B94A48] text-[#E8E5DF] hover:bg-[#D47774] active:bg-[#8F3735] border border-[#D47774]',
     success:
-      'bg-emerald-600 text-white hover:bg-emerald-500 active:bg-emerald-700 shadow-[0_0_16px_rgba(0,255,157,0.35)] border border-emerald-400',
+      'bg-[#242930] text-[#E8E5DF] hover:bg-[#2D333B] border border-[#B9C0C8]/50',
   };
 
   const sizeClasses = {

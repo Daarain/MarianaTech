@@ -7,6 +7,8 @@ interface OceanDepthBackgroundProps {
   showGrid?: boolean;
   enableParallax?: boolean;
   intensity?: EnvironmentIntensity;
+  className?: string;
+  contentClassName?: string;
 }
 
 export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
@@ -14,6 +16,8 @@ export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
   showGrid = true,
   enableParallax = true,
   intensity = 'medium',
+  className,
+  contentClassName,
 }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -60,9 +64,11 @@ export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
   return (
     <div
       onMouseMove={handleMouseMove}
-      className="relative min-h-screen w-full overflow-hidden bg-[#030712] text-slate-100 selection:bg-cyan-500 selection:text-black page-fade-in"
+      className={`relative w-full overflow-hidden bg-[#101214] text-[#E8E5DF] selection:bg-[#D97732] selection:text-[#101214] page-fade-in ${
+        className || 'min-h-screen'
+      }`}
     >
-      {/* Layer 0: Deep Ocean Gradient Backdrop */}
+      {/* Layer 0: Graphite ambient backdrop */}
       <div
         className="pointer-events-none absolute inset-0 transition-transform duration-700 ease-out z-0"
         style={{
@@ -71,17 +77,17 @@ export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
             : `translate3d(${offset.x * -0.4}px, ${offset.y * -0.4}px, 0)`,
           background:
             intensity === 'high'
-              ? 'radial-gradient(circle at 50% 25%, rgba(15, 45, 80, 0.55) 0%, rgba(5, 15, 30, 0.92) 65%, rgba(3, 7, 18, 1) 100%)'
+              ? 'radial-gradient(circle at 50% 25%, rgba(36, 41, 48, 0.7) 0%, rgba(24, 27, 31, 0.94) 65%, rgba(16, 18, 20, 1) 100%)'
               : intensity === 'medium'
-              ? 'radial-gradient(circle at 50% 30%, rgba(10, 32, 60, 0.45) 0%, rgba(5, 13, 26, 0.9) 65%, rgba(3, 7, 18, 1) 100%)'
-              : 'radial-gradient(circle at 50% 40%, rgba(6, 20, 38, 0.35) 0%, rgba(4, 10, 20, 0.95) 70%, rgba(3, 7, 18, 1) 100%)',
+              ? 'radial-gradient(circle at 50% 30%, rgba(36, 41, 48, 0.55) 0%, rgba(24, 27, 31, 0.94) 65%, rgba(16, 18, 20, 1) 100%)'
+              : 'radial-gradient(circle at 50% 40%, rgba(36, 41, 48, 0.4) 0%, rgba(24, 27, 31, 0.96) 70%, rgba(16, 18, 20, 1) 100%)',
         }}
       />
 
       {/* Layer 1: Subsea Light Caustics / Ray Projection */}
       {showCaustics && (
         <div
-          className="pointer-events-none absolute top-[-20%] left-[10%] right-[10%] h-[70vh] bg-gradient-to-b from-cyan-400/10 via-cyan-500/5 to-transparent blur-3xl opacity-30 animate-caustics z-0"
+          className="pointer-events-none absolute top-[-20%] left-[10%] right-[10%] h-[70vh] bg-gradient-to-b from-[#B9C0C8]/[0.06] via-[#B9C0C8]/[0.02] to-transparent blur-3xl opacity-30 animate-caustics z-0"
           style={{
             transform: reducedMotion
               ? 'none'
@@ -101,9 +107,9 @@ export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
               ? 'none'
               : `translate3d(${offset.x * 0.3}px, ${offset.y * 0.3}px, 0)`,
             backgroundImage: `
-              radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.15) 1px, transparent 1px),
-              linear-gradient(to right, rgba(0, 240, 255, 0.04) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(0, 240, 255, 0.04) 1px, transparent 1px)
+              radial-gradient(circle at 50% 50%, rgba(185, 192, 200, 0.12) 1px, transparent 1px),
+              linear-gradient(to right, rgba(185, 192, 200, 0.035) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(185, 192, 200, 0.035) 1px, transparent 1px)
             `,
             backgroundSize: '120px 120px, 40px 40px, 40px 40px',
           }}
@@ -116,7 +122,7 @@ export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
           {[...Array(particleCount)].map((_, i) => (
             <div
               key={i}
-              className="animate-particle absolute rounded-full bg-cyan-300/25 blur-[0.8px]"
+              className="animate-particle absolute rounded-full bg-[#B9C0C8]/25 blur-[0.8px]"
               style={{
                 width: `${(i % 3) + 2}px`,
                 height: `${(i % 3) + 2}px`,
@@ -132,7 +138,7 @@ export const OceanDepthBackground: React.FC<OceanDepthBackgroundProps> = ({
       )}
 
       {/* Content Layer */}
-      <div className="relative z-10">{children}</div>
+      <div className={`relative z-10 ${contentClassName || ''}`}>{children}</div>
     </div>
   );
 };

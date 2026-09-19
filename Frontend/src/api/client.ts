@@ -31,6 +31,25 @@ export async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
+  if (!headers['Authorization'] && typeof window !== 'undefined') {
+    try {
+      const authUser = localStorage.getItem('marianatech_auth_user');
+      let token: string | null = null;
+      if (authUser) {
+        try {
+          const parsed = JSON.parse(authUser);
+          token = parsed?.token || null;
+        } catch {}
+      }
+      if (!token) {
+        token = localStorage.getItem('marianatech_auth') || localStorage.getItem('token');
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch {}
+  }
+
   if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
@@ -69,33 +88,72 @@ export async function apiFetch<T>(
     }
 
     // 3. Check Response Status
-    if (!res.ok || (payload && !payload.success)) {
-      if (payload && payload.error) {
-        throw new APIClientError(
-          payload.error.code || `HTTP_${res.status}`,
-          payload.error.message || `API request failed with status ${res.status}`,
-          payload.error.details
-        );
+    if (!res.ok) {
+      let message = '';
+      let code = `HTTP_${res.status}`;
+      let details: any = rawText || null;
+
+      if (payload && typeof payload === 'object') {
+        const p = payload as any;
+        if (p.error) {
+          if (typeof p.error === 'string') {
+            message = p.error;
+          } else if (typeof p.error === 'object') {
+            message = p.error.message || '';
+            code = p.error.code || code;
+            details = p.error.details ?? p;
+          }
+        } else if (typeof p.message === 'string') {
+          message = p.message;
+        }
+
+        if (p.statusCode) {
+          code = String(p.statusCode);
+        }
       }
 
-      // Map HTTP error codes to user-friendly messages
-      let message = res.statusText || `Request failed with status ${res.status}`;
-      if (res.status === 413) message = 'Uploaded sonar file exceeds maximum allowable size (50 MB limit).';
-      else if (res.status === 415) message = 'Unsupported file format. Please upload a valid PNG, JPG, BMP, or TIFF sonar image.';
-      else if (res.status === 422) message = 'Uploaded image file is corrupted or contains unprocessable pixel data.';
-      else if (res.status === 500) message = 'An unexpected server error occurred during sonar processing.';
-      else if (res.status === 502 || res.status === 503) message = 'MarianaTech AI processing service is currently unavailable.';
+      // Map HTTP error codes to user-friendly messages if no specific message was extracted
+      if (!message) {
+        if (res.status === 400) message = 'Invalid request parameters provided.';
+        else if (res.status === 401) message = 'Invalid credentials or session expired.';
+        else if (res.status === 403) message = 'Access denied: insufficient clearance permissions.';
+        else if (res.status === 404) message = 'The requested telemetry resource was not found.';
+        else if (res.status === 409) message = 'Conflict detected: account or identifier already exists.';
+        else if (res.status === 413) message = 'Uploaded sonar file exceeds maximum allowable size (50 MB limit).';
+        else if (res.status === 415) message = 'Unsupported file format. Please upload a valid PNG, JPG, BMP, or TIFF sonar image.';
+        else if (res.status === 422) message = 'Uploaded image file is corrupted or contains unprocessable pixel data.';
+        else if (res.status === 429) message = 'Too many requests. Please wait a moment before trying again.';
+        else if (res.status === 500) message = 'An unexpected server error occurred during sonar processing.';
+        else if (res.status === 502 || res.status === 503) message = 'MarianaTech AI processing service is currently unavailable.';
+        else message = `Request failed with status ${res.status}`;
+      }
 
-      throw new APIClientError(`HTTP_${res.status}`, message, rawText || null);
+      throw new APIClientError(code, message, details);
     }
 
-    if (payload && payload.success) {
-      return payload.data as T;
+    // 4. Handle Explicit Failure Envelopes (e.g. { success: false, error: ... })
+    if (payload && typeof payload === 'object' && 'success' in payload && (payload as any).success === false) {
+      const p = payload as any;
+      const err = p.error;
+      const message = typeof err === 'string'
+        ? err
+        : err?.message || p.message || 'The requested operation failed.';
+      const code = typeof err === 'object' && err?.code ? err.code : `HTTP_${res.status}`;
+      throw new APIClientError(code, message, err?.details || p);
     }
 
-    // Direct JSON response without standard wrapper
-    if (payload) {
+    // 5. Envelope Response: { success: true, data: ... }
+    if (payload && typeof payload === 'object' && 'success' in payload && (payload as any).success === true && 'data' in payload) {
+      return (payload as any).data as T;
+    }
+
+    // 6. Direct JSON payload (e.g. { user, role, token }, arrays, etc.)
+    if (payload !== null && payload !== undefined) {
       return payload as unknown as T;
+    }
+
+    if (!rawText.trim()) {
+      return undefined as unknown as T;
     }
 
     throw new APIClientError('INVALID_RESPONSE', 'API returned unexpected non-JSON response payload.', rawText);

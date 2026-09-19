@@ -43,32 +43,32 @@ export default function LandingPage() {
       <div className="relative flex min-h-screen flex-col justify-between px-4 sm:px-6 py-6 md:px-12 max-w-7xl mx-auto font-sans select-none page-fade-in text-white">
         
         {/* Top Entry Navigation Bar */}
-        <header className="sticky top-4 z-50 flex items-center justify-between border border-cyan-500/30 bg-[#050D1A]/90 px-5 py-3.5 backdrop-blur-2xl rounded-2xl shadow-[0_10px_30px_rgba(0,240,255,0.15)]">
+        <header className="sticky top-4 z-50 flex items-center justify-between border border-[#B9C0C8]/25 bg-[#181B1F]/95 px-5 py-3.5 rounded-2xl shadow-lg">
           <div
             onClick={() => handleNavClick('home')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 shadow-[0_0_20px_rgba(0,240,255,0.35)] group-hover:scale-105 transition-transform">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#242930] border border-[#B9C0C8]/35 text-[#D97732] group-hover:scale-105 transition-transform">
               <Waves className="h-6 w-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="font-mono text-base font-extrabold tracking-wider text-white group-hover:text-cyan-300 transition-colors">
+              <h1 className="font-mono text-base font-extrabold tracking-wider text-[#E8E5DF] group-hover:text-[#D97732] transition-colors">
                 MARIANATECH
               </h1>
-              <span className="font-mono text-[9px] tracking-widest text-cyan-400 font-semibold uppercase block">
+              <span className="font-mono text-[9px] tracking-widest text-[#B9C0C8] font-semibold uppercase block">
                 OCEAN INTELLIGENCE PLATFORM
               </span>
             </div>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-300">
+          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-[#B9C0C8]">
             <button
               onClick={() => handleNavClick('home')}
               className={`transition-all ${
                 activeTab === 'home'
-                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
-                  : 'hover:text-cyan-300'
+                  ? 'text-[#E8E5DF] font-bold border-b-2 border-[#D97732] pb-0.5'
+                  : 'hover:text-[#E8E5DF]'
               }`}
             >
               Home
@@ -77,8 +77,8 @@ export default function LandingPage() {
               onClick={() => handleNavClick('features')}
               className={`transition-all ${
                 activeTab === 'features'
-                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
-                  : 'hover:text-cyan-300'
+                  ? 'text-[#E8E5DF] font-bold border-b-2 border-[#D97732] pb-0.5'
+                  : 'hover:text-[#E8E5DF]'
               }`}
             >
               Features
@@ -87,8 +87,8 @@ export default function LandingPage() {
               onClick={() => handleNavClick('about')}
               className={`transition-all ${
                 activeTab === 'about'
-                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
-                  : 'hover:text-cyan-300'
+                  ? 'text-[#E8E5DF] font-bold border-b-2 border-[#D97732] pb-0.5'
+                  : 'hover:text-[#E8E5DF]'
               }`}
             >
               About
@@ -97,8 +97,8 @@ export default function LandingPage() {
               onClick={() => handleNavClick('contact')}
               className={`transition-all ${
                 activeTab === 'contact'
-                  ? 'text-cyan-300 font-bold border-b-2 border-cyan-400 pb-0.5'
-                  : 'hover:text-cyan-300'
+                  ? 'text-[#E8E5DF] font-bold border-b-2 border-[#D97732] pb-0.5'
+                  : 'hover:text-[#E8E5DF]'
               }`}
             >
               Contact
@@ -108,8 +108,15 @@ export default function LandingPage() {
           {/* Action CTAs & Mobile Toggle */}
           <div className="flex items-center gap-3">
             <button
+              onClick={() => navigate(ROUTES.login)}
+              className="hidden sm:flex items-center gap-1.5 rounded-full border border-[#B9C0C8]/40 bg-[#242930] px-4 py-2 text-xs font-semibold text-[#E8E5DF] hover:bg-[#2D333B] transition-all shadow-sm"
+            >
+              <span>Operator Login</span>
+            </button>
+
+            <button
               onClick={() => navigate(ROUTES.dashboard)}
-              className="hidden sm:flex items-center gap-2 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-xs font-bold text-black shadow-[0_0_20px_rgba(0,240,255,0.35)] hover:scale-105 transition-all"
+              className="hidden sm:flex items-center gap-2 rounded-full border border-[#D97732] bg-[#D97732] px-5 py-2 text-xs font-bold text-[#101214] hover:bg-[#E08A4D] transition-all"
             >
               <span>Enter Platform</span>
               <ArrowRight className="h-4 w-4" />
@@ -118,7 +125,7 @@ export default function LandingPage() {
             {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg border border-cyan-500/30 bg-cyan-950/60 text-cyan-300 hover:text-white"
+              className="md:hidden p-2 rounded-lg border border-[#B9C0C8]/35 bg-[#242930] text-[#E8E5DF] hover:text-[#D97732]"
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -157,9 +164,18 @@ export default function LandingPage() {
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
+                navigate(ROUTES.login);
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-950/80 py-2.5 text-xs font-semibold text-cyan-300"
+            >
+              <span>Operator Login</span>
+            </button>
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
                 navigate(ROUTES.dashboard);
               }}
-              className="w-full flex items-center justify-center gap-2 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500 to-blue-600 py-3 text-xs font-bold text-black"
+              className="w-full flex items-center justify-center gap-2 rounded-full border border-[#D97732] bg-[#D97732] py-3 text-xs font-bold text-[#101214]"
             >
               <span>Enter Platform</span>
               <ArrowRight className="h-4 w-4" />
@@ -170,21 +186,21 @@ export default function LandingPage() {
         {/* Section 1: Hero (#home) */}
         <section id="home" className="pt-8 pb-16 my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-950/50 px-4 py-1.5 font-mono text-xs text-cyan-300">
-              <ShieldCheck className="h-4 w-4 text-cyan-400" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#B9C0C8]/30 bg-[#242930] px-4 py-1.5 font-mono text-xs text-[#B9C0C8]">
+              <ShieldCheck className="h-4 w-4 text-[#D97732]" />
               <span>MINISTRY OF EARTH SCIENCES (MoES) | NIOT | SIH 2026 PS 26057</span>
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-none">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-[#E8E5DF] leading-none">
                 DEEPER INSIGHTS
               </h1>
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-gradient-cyan leading-none">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-[#E8E5DF] leading-none">
                 CLEANER OCEANS
               </h1>
             </div>
 
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl font-sans leading-relaxed">
+            <p className="text-base sm:text-lg text-[#B9C0C8] max-w-2xl font-sans leading-relaxed">
               AI-Powered Automated Underwater Marine Debris and Anomaly Detection using Side-Scan Sonar Imagery.
             </p>
 
@@ -192,7 +208,7 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={() => navigate(ROUTES.sonarAnalysis)}
-                className="group flex items-center gap-2.5 rounded-full border border-cyan-400/60 bg-cyan-500 px-7 py-3.5 text-xs font-extrabold text-black shadow-[0_0_30px_rgba(0,240,255,0.5)] hover:bg-cyan-400 hover:scale-105 transition-all"
+                className="group flex items-center gap-2.5 rounded-full border border-[#D97732] bg-[#D97732] px-7 py-3.5 text-xs font-extrabold text-[#101214] hover:bg-[#E08A4D] hover:scale-105 transition-all"
               >
                 <span>Start Analysis</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -200,15 +216,15 @@ export default function LandingPage() {
 
               <button
                 onClick={() => setDemoVideoOpen(true)}
-                className="flex items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-950/60 px-6 py-3.5 text-xs font-semibold text-cyan-300 hover:bg-cyan-900/60 hover:text-white transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)] hover:scale-105"
+                className="flex items-center gap-2 rounded-full border border-[#B9C0C8]/40 bg-[#242930] px-6 py-3.5 text-xs font-semibold text-[#E8E5DF] hover:bg-[#2D333B] transition-all hover:scale-105"
               >
-                <Play className="h-3.5 w-3.5 fill-current text-cyan-400" />
+                <Play className="h-3.5 w-3.5 fill-current text-[#D97732]" />
                 <span>Watch Demo</span>
               </button>
             </div>
 
             {/* Capability Feature Capsules */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-8 border-t border-cyan-500/20 text-xs text-slate-300">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-8 border-t border-[#B9C0C8]/20 text-xs text-[#B9C0C8]">
               <div
                 onClick={() => handleNavClick('features')}
                 className="flex items-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/30 p-3 hover:border-cyan-400/50 cursor-pointer transition-colors"

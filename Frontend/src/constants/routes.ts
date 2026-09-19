@@ -1,5 +1,7 @@
 export const ROUTES = {
   landing: '/',
+  login: '/login',
+  signup: '/signup',
   dashboard: '/dashboard',
   sonarAnalysis: '/sonar-analysis',
   missionNew: '/missions/new',
@@ -16,6 +18,8 @@ export const ROUTES = {
 
 export const ROUTE_LABELS: Record<string, string> = {
   '/': 'Home',
+  '/login': 'Operator Login',
+  '/signup': 'Personnel Registration',
   '/dashboard': 'Mission Control',
   '/sonar-analysis': 'Sonar Analysis',
   '/missions/new': 'Sonar Data Upload',

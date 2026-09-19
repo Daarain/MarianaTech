@@ -1,0 +1,12 @@
+# MarianaTech Side-scan Sonar Mission Intelligence Report
+# Generated At: 2026-09-18T19:12:26.280Z
+
+# MISSION SUMMARY
+Mission ID,Mission Name,Status,Date,Location,Vessel,Operator,Sonar Type,Processing Run ID,Model Version,Anomaly Count
+"MSN-2026-0146","E2E Deepsea Trench Survey","complete","2026-08-29","Mariana Trench South","RV Mariana Explorer","E2E Operator","Side-scan Sonar","RUN-E2E-1789758746022","v1.4.2-yolo-sonar",3
+
+# DETECTED ACOUSTIC ANOMALIES
+Anomaly ID,Class Name,Confidence,Priority,Latitude,Longitude,Depth (m),Size (m),Verification Status,Description
+"ANM-E2E-1789758746035","shipwreck","0.96","critical","-6.214","71.854","4180","45","rejected","Sunken vessel acoustic profile verified in E2E suite"
+"ANM-AI-1789758745842-2","shipwreck","0.89","high","-6.222","71.862","4205","38","pending_review","Large metallic hull structure with linear acoustic shadow. [YOLO INFERENCE]"
+"ANM-AI-1789758745810-1","mine_like_contact","0.93","critical","-6.215","71.855","4185","2.9","pending_review","Acoustic detection matching naval ordnance profile. [YOLO INFERENCE]"
