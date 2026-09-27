@@ -8,6 +8,7 @@ export interface AuthenticatedUserPayload {
   username: string;
   name: string;
   role: UserRole;
+
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -47,6 +48,7 @@ export function authenticateJWT(
         username: 'dev_operator',
         name: 'Dev Operator',
         role: 'admin',
+
       };
     }
     return next();
