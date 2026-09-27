@@ -134,7 +134,7 @@ export default function MissionUpload() {
     if (file.size > MAX_FILE_SIZE_BYTES) {
       setSelectedFile(null);
       setImageDimensions(null);
-      setValidationError(`File size (${formatBytes(file.size)}) exceeds maximum ingestion limit (500 MB).`);
+      setValidationError(`File size (${formatBytes(file.size)}) exceeds maximum ingestion limit (50 MB).`);
       setState('INVALID');
       showToast('File size limit exceeded', 'error');
       return;
@@ -233,7 +233,13 @@ export default function MissionUpload() {
   };
 
   const handleStartIngestion = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      const message = 'Select a sonar image before starting analysis.';
+      setValidationError(message);
+      setState('INVALID');
+      showToast(message, 'error');
+      return;
+    }
 
     setState('UPLOADING');
     setUploadProgress(15);
@@ -248,7 +254,12 @@ export default function MissionUpload() {
       setUploadProgress(100);
       setState('SUCCESS');
       setStagedDetectionResult(data);
-      showToast(`Ingestion complete! ${data.anomalies_detected} contacts detected.`, 'success');
+      showToast(
+        data.detected_object?.toLowerCase() === 'none'
+          ? 'Analysis complete. No underwater object detected.'
+          : `Analysis complete. ${data.detected_object || 'Object'} detected.`,
+        'success'
+      );
     } catch (err: any) {
       clearInterval(progressTimer);
       setUploadProgress(0);
@@ -357,7 +368,7 @@ export default function MissionUpload() {
                       <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.JPG / .JPEG</span>
                       <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.TIFF</span>
                       <span className="rounded bg-cyan-950/60 px-2 py-1 border border-cyan-500/30">.BMP</span>
-                      <span className="text-slate-400">| Max limit: 500 MB</span>
+                      <span className="text-slate-400">| Max limit: 50 MB</span>
                     </div>
 
                     <Button variant="outline" size="sm" className="mt-2">
@@ -699,6 +710,26 @@ export default function MissionUpload() {
             <Panel title="BACKEND EXTRACTION METRICS">
               {detectionResult ? (
                 <div className="space-y-3 font-mono text-xs text-slate-300">
+                  <div className="rounded border border-cyan-500/30 bg-cyan-950/30 p-3">
+                    <p className="text-[10px] uppercase tracking-widest text-cyan-400">
+                      YOLO DETECTION RESULT
+                    </p>
+                    <p className="mt-1 text-base font-bold uppercase text-white">
+                      {detectionResult.detected_object?.toLowerCase() === 'none'
+                        ? 'NO UNDERWATER OBJECT DETECTED'
+                        : `${detectionResult.detected_object || 'UNKNOWN OBJECT'} DETECTED`}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-300">
+                      Confidence:{' '}
+                      <span className="font-bold text-cyan-300">
+                        {(detectionResult.confidence ?? 0).toFixed(2)}%
+                      </span>
+                    </p>
+                    {detectionResult.message && (
+                      <p className="mt-1 text-xs text-slate-400">{detectionResult.message}</p>
+                    )}
+                  </div>
+
                   <div className="flex justify-between py-1 border-b border-cyan-500/10">
                     <span className="text-slate-400">Engine Status:</span>
                     <span className="text-emerald-400 font-bold uppercase">{detectionResult.status}</span>

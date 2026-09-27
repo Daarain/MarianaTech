@@ -1,15 +1,14 @@
 import { apiFetch, APIClientError } from './client';
 import type { DetectionResult } from '@/types/api';
 import { validateDetectionResult } from '@/utils/validationUtils';
-import { isValidCoordinate } from '@/utils/geolocationUtils';
 
 const ALLOWED_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'tiff', 'bmp']);
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB limit
 
 export async function detectSonarImage(
   file: File,
-  latitude: number = -6.3,
-  longitude: number = 71.2
+  _latitude: number = -6.3,
+  _longitude: number = 71.2
 ): Promise<DetectionResult> {
   // 1. Client-Side Pre-Validation
   if (!file || !(file instanceof File)) {
@@ -35,18 +34,9 @@ export async function detectSonarImage(
     );
   }
 
-  if (!isValidCoordinate(latitude, longitude)) {
-    throw new APIClientError(
-      'INVALID_COORDINATES',
-      `Geospatial coordinates (Lat: ${latitude}, Lon: ${longitude}) are out of valid geographic range [-90 to 90 lat, -180 to 180 lon].`
-    );
-  }
-
   // 2. Submit API Request
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('latitude', latitude.toString());
-  formData.append('longitude', longitude.toString());
 
   const rawResult = await apiFetch<DetectionResult>('/detect', {
     method: 'POST',
@@ -55,5 +45,18 @@ export async function detectSonarImage(
   });
 
   // 3. Validate & Normalize Untrusted ML Model Output
+  if (
+    !rawResult ||
+    typeof rawResult !== 'object' ||
+    typeof rawResult.detected_object !== 'string' ||
+    typeof rawResult.confidence !== 'number' ||
+    typeof rawResult.message !== 'string'
+  ) {
+    throw new APIClientError(
+      'INVALID_RESPONSE',
+      'The detection service returned an incomplete analysis result.'
+    );
+  }
+
   return validateDetectionResult(rawResult, `MSN-LOCAL-${Date.now().toString().slice(-4)}`);
 }

@@ -90,6 +90,11 @@ export interface DetectionResult {
   preprocessing_metrics?: PreprocessingMetrics;
   anomalies_detected: number;
   anomalies: Anomaly[];
+  detected_object?: string;
+  confidence?: number;
+  message?: string;
+  analysis_id?: string;
+  dataset_id?: string;
 }
 
 export interface DashboardStats {
@@ -150,5 +155,4 @@ export interface AnalysisListResponse {
   page: number;
   limit: number;
 }
-
 

@@ -150,7 +150,15 @@ export function validateDetectionResult(data: any, fallbackMissionId: string = '
     image_dimensions: { width: validWidth, height: validHeight },
     metadata: data.metadata,
     preprocessing_metrics: data.preprocessing_metrics,
-    anomalies_detected: validatedAnomalies.length,
+    anomalies_detected:
+      typeof data.anomalies_detected === 'number' && data.anomalies_detected >= 0
+        ? data.anomalies_detected
+        : validatedAnomalies.length,
     anomalies: validatedAnomalies,
+    detected_object: typeof data.detected_object === 'string' ? data.detected_object : undefined,
+    confidence: typeof data.confidence === 'number' ? data.confidence : undefined,
+    message: typeof data.message === 'string' ? data.message : undefined,
+    analysis_id: typeof data.analysis_id === 'string' ? data.analysis_id : undefined,
+    dataset_id: typeof data.dataset_id === 'string' ? data.dataset_id : undefined,
   };
 }
