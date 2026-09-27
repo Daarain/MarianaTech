@@ -49,7 +49,6 @@ import {
   filterDetectionsCombined,
 } from '@/utils/classificationUtils';
 import ImageViewerFrame from '@/components/sonar/ImageViewerFrame';
-import DetectionMarker from '@/components/sonar/DetectionMarker';
 import ConfidenceControlPanel, { type SortOrder } from '@/components/sonar/ConfidenceControlPanel';
 import ClassificationInspectorPanel from '@/components/sonar/ClassificationInspectorPanel';
 import GeospatialMapContainer from '@/components/sonar/GeospatialMapContainer';
@@ -147,6 +146,15 @@ export default function SonarViewer() {
 
   // Handle start AI analysis execution
   const handleStartAnalysis = async () => {
+    if (!stagedFile) {
+      const message = 'Upload a sonar image before starting analysis.';
+      setTelemetryMessage(message);
+      showToast(message, 'error');
+      return;
+    }
+
+    setLocalResult(null);
+    setSelectedAnomaly(null);
     setWorkspaceState('SUBMITTING');
     setTelemetryMessage('TRANSMITTING ACOUSTIC PAYLOAD TO BACKEND AI ENGINE...');
 
@@ -169,34 +177,11 @@ export default function SonarViewer() {
     try {
       showToast('Initiating real acoustic CV pipeline execution on backend...', 'info');
 
-      let targetFile = stagedFile;
-      if (!targetFile) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = '#061527';
-          ctx.fillRect(0, 0, 1024, 512);
-          ctx.fillStyle = '#00f0ff';
-          ctx.fillRect(200, 150, 120, 60);
-          ctx.fillRect(600, 300, 80, 80);
-        }
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-        if (blob) {
-          targetFile = new File([blob], `mission_${missionId}_scan.png`, { type: 'image/png' });
-        }
-      }
-
-      if (!targetFile) {
-        throw new Error('No sonar image dataset available for backend analysis.');
-      }
-
       setWorkspaceState('PROCESSING');
-      const lat = stagedFile ? stagedLatitude : (mission?.latitude || -6.3000);
-      const lon = stagedFile ? stagedLongitude : (mission?.longitude || 71.2000);
+      const lat = stagedLatitude;
+      const lon = stagedLongitude;
 
-      const data = await analyze(targetFile, lat, lon);
+      const data = await analyze(stagedFile, lat, lon);
       clearInterval(interval);
 
       setLocalResult(data);
@@ -358,6 +343,61 @@ export default function SonarViewer() {
           </div>
         </div>
 
+        {/* Primary AI conclusion */}
+        {(workspaceState === 'SUBMITTING' || workspaceState === 'PROCESSING' || (workspaceState === 'COMPLETED' && localResult)) && (
+          <div className="rounded-xl border border-cyan-400/40 bg-gradient-to-br from-cyan-950/50 via-[#050D1A]/95 to-indigo-950/40 p-5 shadow-[0_0_30px_rgba(0,240,255,0.12)]">
+            {workspaceState === 'SUBMITTING' || workspaceState === 'PROCESSING' ? (
+              <div className="flex items-center gap-3 text-cyan-200">
+                <Activity className="h-5 w-5 animate-spin text-cyan-400" />
+                <div>
+                  <p className="text-[11px] font-bold tracking-[0.2em] text-cyan-400">AI DETECTION</p>
+                  <p className="mt-1 text-lg font-bold text-white">ANALYZING SONAR IMAGE</p>
+                  <p className="mt-1 text-xs text-slate-400">Running MarianaTech YOLO11 detection...</p>
+                </div>
+              </div>
+            ) : (() => {
+              const detectedObject = localResult?.detected_object?.toLowerCase() || 'none';
+              const isNoDetection = detectedObject === 'none';
+              const confidence = Math.max(0, Math.min(100, localResult?.confidence ?? 0));
+              const primaryAnomaly = rawAnomalies[0];
+              const priority = isNoDetection ? 'NO DETECTION' : primaryAnomaly?.priority?.toUpperCase() || 'NOT PROVIDED';
+              const objectLabel = isNoDetection
+                ? 'NO OBJECT DETECTED'
+                : detectedObject.replace(/_/g, ' ').toUpperCase();
+
+              return (
+                <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr_1fr] lg:items-center">
+                  <div>
+                    <p className="text-[11px] font-bold tracking-[0.2em] text-cyan-400">AI DETECTION</p>
+                    <h3 className="mt-2 text-3xl font-black tracking-wide text-white sm:text-4xl">{objectLabel}</h3>
+                    <p className="mt-2 text-xs text-slate-400">
+                      {localResult?.message || 'MarianaTech YOLO11 analysis complete'}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-cyan-500/20 bg-slate-950/50 p-3">
+                    <p className="text-[10px] font-bold tracking-widest text-slate-400">MODEL CONFIDENCE</p>
+                    <p className="mt-1 text-3xl font-black text-cyan-300">{confidence.toFixed(2)}%</p>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+                      <div className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${confidence}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-amber-500/20 bg-slate-950/50 p-3">
+                    <p className="text-[10px] font-bold tracking-widest text-slate-400">RISK / PRIORITY</p>
+                    <p className={`mt-1 text-2xl font-black ${isNoDetection ? 'text-slate-300' : 'text-amber-300'}`}>
+                      {priority}
+                    </p>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      {isNoDetection ? 'No anomaly risk assigned' : 'Operational classification'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* Filter Summary Telemetry Strip */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-cyan-500/10 bg-[#050D1A]/80 px-4 py-2 text-xs">
           <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-300">
@@ -507,29 +547,62 @@ export default function SonarViewer() {
                       </div>
                     )}
 
-                    {/* Layer 3 & 4: AI Bounding Box Overlays */}
-                    {viewMode === 'AI_OVERLAY' && showDetections && visibleAnomalies.map((anom, idx) => {
-                      const normBbox = getNormalizedBoundingBox(anom, idx);
-                      const isSelected = selectedAnomaly?.id === anom.id;
+                    {/* AI overlay uses the same aspect-ratio letterboxing as the image. */}
+                    {viewMode === 'AI_OVERLAY' && showDetections && localResult?.image_dimensions && (
+                      <svg
+                        className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible"
+                        viewBox={`0 0 ${localResult.image_dimensions.width} ${localResult.image_dimensions.height}`}
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        {visibleAnomalies.map((anom, idx) => {
+                          const normBbox = getNormalizedBoundingBox(anom, idx);
+                          const x = (normBbox.x / 100) * localResult.image_dimensions.width;
+                          const y = (normBbox.y / 100) * localResult.image_dimensions.height;
+                          const width = (normBbox.w / 100) * localResult.image_dimensions.width;
+                          const height = (normBbox.h / 100) * localResult.image_dimensions.height;
+                          const isSelected = selectedAnomaly?.id === anom.id;
+                          const meta = getClassMetadata(anom.class_name);
 
-                      return (
-                        <DetectionMarker
-                          key={anom.id || `marker-${idx}`}
-                          id={anom.id}
-                          classNameLabel={anom.class_name}
-                          confidence={anom.confidence}
-                          priority={anom.priority}
-                          bbox={normBbox}
-                          hasAcousticShadow={anom.has_acoustic_shadow}
-                          selected={isSelected}
-                          onClick={() => {
-                            setSelectedAnomaly(anom);
-                            const meta = getClassMetadata(anom.class_name);
-                            showToast(`Selected contact: ${meta.label} (${formatConfidenceLabel(anom.confidence)})`, 'info');
-                          }}
-                        />
-                      );
-                    })}
+                          return (
+                            <g
+                              key={anom.id || `marker-${idx}`}
+                              className="pointer-events-auto cursor-pointer"
+                              onClick={() => {
+                                setSelectedAnomaly(anom);
+                                showToast(`Selected contact: ${meta.label} (${formatConfidenceLabel(anom.confidence)})`, 'info');
+                              }}
+                            >
+                              <rect
+                                x={x}
+                                y={y}
+                                width={width}
+                                height={height}
+                                rx="4"
+                                fill="rgba(0, 240, 255, 0.1)"
+                                stroke={isSelected ? '#22d3ee' : '#818cf8'}
+                                strokeWidth={Math.max(localResult.image_dimensions.width / 600, 3)}
+                              />
+                              <circle
+                                cx={x + width / 2}
+                                cy={y + height / 2}
+                                r={Math.max(localResult.image_dimensions.width / 350, 5)}
+                                fill="#22d3ee"
+                              />
+                              <text
+                                x={x}
+                                y={Math.max(y - localResult.image_dimensions.height * 0.01, 16)}
+                                fill="#c7d2fe"
+                                fontSize={Math.max(localResult.image_dimensions.width / 140, 16)}
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                              >
+                                {`${anom.id} | ${anom.class_name.replace(/_/g, ' ')} ${Math.round(anom.confidence * 100)}%`}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    )}
                   </div>
                 </ImageViewerFrame>
               )}
@@ -577,7 +650,7 @@ export default function SonarViewer() {
                         variant="primary"
                         size="md"
                         onClick={handleStartAnalysis}
-                        disabled={isAnalyzing}
+                        disabled={isAnalyzing || !stagedFile}
                       >
                         <Play className="h-4 w-4 mr-2 fill-current" />
                         START AI ANALYSIS
@@ -786,4 +859,3 @@ export default function SonarViewer() {
     </PageLayout>
   );
 }
-

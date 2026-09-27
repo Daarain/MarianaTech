@@ -40,9 +40,35 @@ export function normalizeConfidence(val: any): number {
  * Validates and normalizes bounding box coordinates.
  * Ensures x, y, w, h are non-negative percentages within [0, 100].
  */
-export function validateBoundingBox(bbox: any, index: number): BoundingBox {
+export function validateBoundingBox(
+  bbox: any,
+  index: number,
+  imageWidth: number = 1024,
+  imageHeight: number = 512
+): BoundingBox {
   if (!bbox || typeof bbox !== 'object') {
     return { x: 20 + (index % 5) * 12, y: 30 + (index % 4) * 15, w: 15, h: 15 };
+  }
+
+  if (
+    typeof bbox.x1 === 'number' &&
+    typeof bbox.y1 === 'number' &&
+    typeof bbox.x2 === 'number' &&
+    typeof bbox.y2 === 'number' &&
+    imageWidth > 0 &&
+    imageHeight > 0
+  ) {
+    const x1 = Math.max(0, Math.min(imageWidth, bbox.x1));
+    const y1 = Math.max(0, Math.min(imageHeight, bbox.y1));
+    const x2 = Math.max(x1, Math.min(imageWidth, bbox.x2));
+    const y2 = Math.max(y1, Math.min(imageHeight, bbox.y2));
+
+    return {
+      x: Number(((x1 / imageWidth) * 100).toFixed(2)),
+      y: Number(((y1 / imageHeight) * 100).toFixed(2)),
+      w: Number((((x2 - x1) / imageWidth) * 100).toFixed(2)),
+      h: Number((((y2 - y1) / imageHeight) * 100).toFixed(2)),
+    };
   }
 
   let x = Number(bbox.x);
@@ -92,13 +118,19 @@ export function validateAnomalyPriority(priority: any): Priority {
 /**
  * Normalizes an individual Anomaly contact object.
  */
-export function validateAnomaly(raw: any, index: number, defaultMissionId: string = 'MSN-CURRENT'): Anomaly {
+export function validateAnomaly(
+  raw: any,
+  index: number,
+  defaultMissionId: string = 'MSN-CURRENT',
+  imageWidth: number = 1024,
+  imageHeight: number = 512
+): Anomaly {
   const safeId = typeof raw?.id === 'string' && raw.id.trim() ? raw.id : `ANM-GEN-${index + 1}`;
   const safeMissionId = typeof raw?.mission_id === 'string' && raw.mission_id.trim() ? raw.mission_id : defaultMissionId;
   const confidence = normalizeConfidence(raw?.confidence);
   const className = validateAnomalyClass(raw?.class_name);
   const priority = validateAnomalyPriority(raw?.priority);
-  const bbox = validateBoundingBox(raw?.bbox, index);
+  const bbox = validateBoundingBox(raw?.bbox, index, imageWidth, imageHeight);
 
   const rawLat = Number(raw?.latitude);
   const rawLon = Number(raw?.longitude);
@@ -140,9 +172,18 @@ export function validateDetectionResult(data: any, fallbackMissionId: string = '
   const validWidth = !isNaN(width) && width > 0 ? width : 1024;
   const validHeight = !isNaN(height) && height > 0 ? height : 512;
 
-  const rawAnomalies = Array.isArray(data.anomalies) ? data.anomalies : [];
+  const rawAnomalies = Array.isArray(data.anomalies)
+    ? data.anomalies
+    : data.anomaly && data.detected_object?.toLowerCase() !== 'none'
+    ? [{
+        ...data.anomaly,
+        id: data.anomaly.id || `ANM-${fallbackMissionId}`,
+        mission_id: data.anomaly.mission_id || fallbackMissionId,
+        class_name: data.anomaly.class_name || data.detected_object,
+      }]
+    : [];
   const validatedAnomalies = rawAnomalies.map((item: any, idx: number) =>
-    validateAnomaly(item, idx, fallbackMissionId)
+    validateAnomaly(item, idx, fallbackMissionId, validWidth, validHeight)
   );
 
   return {

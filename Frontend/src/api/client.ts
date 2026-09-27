@@ -15,20 +15,23 @@ export class APIClientError extends Error {
 
 export interface ApiFetchOptions extends RequestInit {
   timeoutMs?: number;
+  baseUrl?: string;
 }
 
 export async function apiFetch<T>(
   endpoint: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
-  const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  const timeoutMs = options.timeoutMs || 30000;
+  const { timeoutMs: requestedTimeout, baseUrl, ...requestOptions } = options;
+  const requestBaseUrl = baseUrl || BASE_URL;
+  const url = `${requestBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const timeoutMs = requestedTimeout || 30000;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string>),
+    ...(requestOptions.headers as Record<string, string>),
   };
 
   if (!headers['Authorization'] && typeof window !== 'undefined') {
@@ -50,15 +53,15 @@ export async function apiFetch<T>(
     } catch {}
   }
 
-  if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+  if (requestOptions.body && typeof requestOptions.body === 'string' && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
   try {
     const res = await fetch(url, {
-      ...options,
+      ...requestOptions,
       headers,
-      signal: options.signal || controller.signal,
+      signal: requestOptions.signal || controller.signal,
     });
 
     clearTimeout(timeoutId);
@@ -174,7 +177,7 @@ export async function apiFetch<T>(
     // Handle network disconnection or server offline
     throw new APIClientError(
       'SERVER_UNAVAILABLE',
-      `Backend API server is unreachable at ${BASE_URL}. Please verify your network connection and server status.`,
+      `Backend API server is unreachable at ${requestBaseUrl}. Please verify your network connection and server status.`,
       error?.message
     );
   }

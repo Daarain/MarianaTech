@@ -1,4 +1,5 @@
 import { apiFetch, APIClientError } from './client';
+import { AI_BASE_URL } from '@/constants/config';
 import type { DetectionResult } from '@/types/api';
 import { validateDetectionResult } from '@/utils/validationUtils';
 
@@ -41,6 +42,7 @@ export async function detectSonarImage(
   const rawResult = await apiFetch<DetectionResult>('/detect', {
     method: 'POST',
     body: formData,
+    baseUrl: AI_BASE_URL,
     timeoutMs: 45000, // 45s ML inference timeout
   });
 
