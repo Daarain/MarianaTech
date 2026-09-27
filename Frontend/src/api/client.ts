@@ -1,4 +1,4 @@
-import { BASE_URL } from '@/constants/config';
+import { API_FALLBACK_URLS, BASE_URL } from '@/constants/config';
 import type { ApiResponse } from '@/types/api';
 
 export class APIClientError extends Error {
@@ -23,8 +23,8 @@ export async function apiFetch<T>(
   options: ApiFetchOptions = {}
 ): Promise<T> {
   const { timeoutMs: requestedTimeout, baseUrl, ...requestOptions } = options;
-  const requestBaseUrl = baseUrl || BASE_URL;
-  const url = `${requestBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const requestBaseUrls = baseUrl ? [baseUrl] : API_FALLBACK_URLS;
+  const requestBaseUrl = requestBaseUrls[0] || BASE_URL;
   const timeoutMs = requestedTimeout || 30000;
 
   const controller = new AbortController();
@@ -58,11 +58,31 @@ export async function apiFetch<T>(
   }
 
   try {
-    const res = await fetch(url, {
-      ...requestOptions,
-      headers,
-      signal: requestOptions.signal || controller.signal,
-    });
+    let res: Response | null = null;
+    let lastNetworkError: unknown = null;
+
+    for (const candidateBaseUrl of requestBaseUrls) {
+      const url = `${candidateBaseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+      try {
+        res = await fetch(url, {
+          ...requestOptions,
+          headers,
+          signal: requestOptions.signal || controller.signal,
+        });
+
+        // A local server can be running but not expose the requested route.
+        // Try the configured Render fallback before surfacing the HTTP error.
+        if (res.ok || candidateBaseUrl === requestBaseUrls[requestBaseUrls.length - 1]) {
+          break;
+        }
+      } catch (error) {
+        lastNetworkError = error;
+      }
+    }
+
+    if (!res) {
+      throw lastNetworkError || new Error('No backend endpoint responded.');
+    }
 
     clearTimeout(timeoutId);
 
