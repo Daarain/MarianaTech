@@ -11,6 +11,7 @@ if (!jwtSecret) {
 
 export const config = {
   env: process.env.NODE_ENV || 'development',
+  authBypass: process.env.NODE_ENV !== 'production' && process.env.AUTH_BYPASS === 'true',
   port: parseInt(process.env.PORT || '5000', 10),
   mongodbUri: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/marianatech',
   mongodbDbName: process.env.MONGODB_DB_NAME || 'marianatech',

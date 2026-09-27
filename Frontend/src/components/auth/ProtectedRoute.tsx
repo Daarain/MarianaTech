@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants/routes';
+import { AUTH_BYPASS } from '@/constants/config';
 import { RefreshCw } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -11,6 +12,10 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  if (AUTH_BYPASS) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (

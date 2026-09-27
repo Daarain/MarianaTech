@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { apiFetch } from '@/api/client';
+import { AUTH_BYPASS } from '@/constants/config';
 
 export type UserRole = 'admin' | 'operator';
+
+const DEV_FALLBACK_USER: AuthUser = {
+  user: 'Dev Operator',
+  role: 'operator',
+};
 
 export interface AuthUser {
   user: string;
@@ -134,11 +140,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [setUser]);
 
+  const effectiveUser = user || (AUTH_BYPASS ? DEV_FALLBACK_USER : null);
+
   const value: AuthContextValue = {
-    user,
-    role: user?.role ?? 'operator',
+    user: effectiveUser,
+    role: effectiveUser?.role ?? 'operator',
     isAuthenticated: Boolean(user && user.token),
-    isLoading,
+    isLoading: AUTH_BYPASS ? false : isLoading,
     login,
     signup,
     logout,
