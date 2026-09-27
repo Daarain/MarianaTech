@@ -31,6 +31,27 @@ export function authenticateJWT(
     token = req.query.token;
   }
 
+  // Development bypass check
+  if (config.authBypass) {
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, config.jwtSecret) as AuthenticatedUserPayload;
+        req.user = decoded;
+      } catch {
+        // In bypass mode, ignore token verification errors
+      }
+    }
+    if (!req.user) {
+      req.user = {
+        id: 'dev-bypass-user',
+        username: 'dev_operator',
+        name: 'Dev Operator',
+        role: 'admin',
+      };
+    }
+    return next();
+  }
+
   if (!token) {
     res.status(401).json({
       error: 'Authentication token required',
@@ -58,6 +79,10 @@ export function authenticateJWT(
  */
 export function authorizeRoles(allowedRoles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    if (config.authBypass) {
+      return next();
+    }
+
     if (!req.user) {
       res.status(401).json({
         error: 'Authentication required',

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { loginUser, getUserProfile, registerUser } from '../services/auth.service';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { storageService } from '../services/storage.service';
+import { config } from '../config/env';
 
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -100,9 +101,37 @@ export async function logout(_req: Request, res: Response): Promise<void> {
 export async function getMe(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user?.id) {
+      if (config.authBypass) {
+        res.status(200).json({
+          id: 'dev-bypass-user',
+          name: 'Dev Operator',
+          username: 'dev_operator',
+          email: 'operator@marianatech.local',
+          role: 'operator',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        return;
+      }
       res.status(401).json({ error: 'Unauthorized', statusCode: 401 });
       return;
     }
+
+    if (config.authBypass && req.user.id === 'dev-bypass-user') {
+      res.status(200).json({
+        id: 'dev-bypass-user',
+        name: 'Dev Operator',
+        username: 'dev_operator',
+        email: 'operator@marianatech.local',
+        role: 'operator',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
     const user = await getUserProfile(req.user.id);
     res.status(200).json({
       id: user._id,
@@ -115,6 +144,19 @@ export async function getMe(req: AuthenticatedRequest, res: Response, next: Next
       updatedAt: user.updatedAt,
     });
   } catch (error) {
+    if (config.authBypass) {
+      res.status(200).json({
+        id: 'dev-bypass-user',
+        name: 'Dev Operator',
+        username: 'dev_operator',
+        email: 'operator@marianatech.local',
+        role: 'operator',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      return;
+    }
     next(error);
   }
 }

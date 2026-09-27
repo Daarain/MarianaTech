@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { MissionProvider } from '@/context/MissionContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { ROUTES } from '@/constants/routes';
+import { AUTH_BYPASS } from '@/constants/config';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { RefreshCw } from 'lucide-react';
@@ -46,7 +47,17 @@ function App() {
               <Suspense fallback={<PageLoadingFallback />}>
                 <Routes>
                   {/* Entry & Public Experience */}
-                  <Route path="/" element={<LandingPage />} />
+                  <Route
+                    path="/"
+                    element={
+                      AUTH_BYPASS ? (
+                        <Navigate to={ROUTES.dashboard} replace />
+                      ) : (
+                        <LandingPage />
+                      )
+                    }
+                  />
+                  <Route path="/landing" element={<LandingPage />} />
                   <Route path={ROUTES.login} element={<Login />} />
                   <Route path={ROUTES.signup} element={<Signup />} />
 
