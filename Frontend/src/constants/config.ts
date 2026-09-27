@@ -1,8 +1,8 @@
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'||'https://marianatech.onrender.com';
+export const BASE_URL = import.meta.env.VITE_API_URL || 'https://marianatech.onrender.com';
 // The AI service base URL is kept separate from the Node/MongoDB API.
 // The request client appends `/detect` to this origin.
 export const AI_BASE_URL =
-  import.meta.env.VITE_AI_API_URL || 'https://marianatechai.onrender.com'||'http://127.0.0.1:8000';
+  import.meta.env.VITE_AI_API_URL || 'http://127.0.0.1:8000';
 export const IS_DEV = import.meta.env.DEV;
 export const AUTH_BYPASS =
   Boolean(import.meta.env.DEV) &&
